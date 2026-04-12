@@ -4,27 +4,13 @@ import FDTable from "@/components/FDTable";
 import AddFDDialog from "@/components/AddFDDialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PiggyBank, Search } from "lucide-react";
-import { defaultDeposits, BANKS, type FixedDeposit } from "@/data/fixedDeposits";
-import { toast } from "sonner";
-
-const STORAGE_KEY = "fd-tracker-deposits";
-
-const loadDeposits = (): FixedDeposit[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : defaultDeposits;
-  } catch {
-    return defaultDeposits;
-  }
-};
-
-const saveDeposits = (deposits: FixedDeposit[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(deposits));
-};
+import { Button } from "@/components/ui/button";
+import { PiggyBank, Search, Database } from "lucide-react";
+import { BANKS, type FixedDeposit } from "@/data/fixedDeposits";
+import { useDeposits } from "@/hooks/useDeposits";
 
 const Index = () => {
-  const [deposits, setDeposits] = useState<FixedDeposit[]>(loadDeposits);
+  const { deposits, loading, handleAdd, handleDelete, seedDefaults } = useDeposits();
   const [search, setSearch] = useState("");
   const [bankFilter, setBankFilter] = useState("all");
 
@@ -45,20 +31,6 @@ const Index = () => {
     return result;
   }, [deposits, search, bankFilter]);
 
-  const handleAdd = (fd: FixedDeposit) => {
-    const next = [fd, ...deposits];
-    setDeposits(next);
-    saveDeposits(next);
-    toast.success("Fixed deposit added successfully!");
-  };
-
-  const handleDelete = (id: string) => {
-    const next = deposits.filter((fd) => fd.id !== id);
-    setDeposits(next);
-    saveDeposits(next);
-    toast.success("Fixed deposit removed.");
-  };
-
   const activeBanks = useMemo(() => [...new Set(deposits.map((fd) => fd.bank))], [deposits]);
 
   return (
@@ -71,37 +43,49 @@ const Index = () => {
             </div>
             <h1 className="text-xl font-display">FD Tracker</h1>
           </div>
-          <AddFDDialog onAdd={handleAdd} />
+          <div className="flex items-center gap-2">
+            {deposits.length === 0 && !loading && (
+              <Button variant="outline" size="sm" onClick={seedDefaults} className="gap-2">
+                <Database className="w-4 h-4" /> Load Defaults
+              </Button>
+            )}
+            <AddFDDialog onAdd={handleAdd} />
+          </div>
         </div>
       </header>
       <main className="container max-w-6xl mx-auto px-4 py-8 space-y-8">
-        <SummaryCards deposits={filtered} />
+        {loading ? (
+          <div className="text-center py-20 text-muted-foreground">Loading deposits from database...</div>
+        ) : (
+          <>
+            <SummaryCards deposits={filtered} />
 
-        {/* Search & Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by account, bank, type, notes..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={bankFilter} onValueChange={setBankFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="All Banks" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Banks</SelectItem>
-              {activeBanks.map((b) => (
-                <SelectItem key={b} value={b}>{b}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by account, bank, type, notes..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={bankFilter} onValueChange={setBankFilter}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="All Banks" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Banks</SelectItem>
+                  {activeBanks.map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <FDTable deposits={filtered} onDelete={handleDelete} />
+            <FDTable deposits={filtered} onDelete={handleDelete} />
+          </>
+        )}
       </main>
     </div>
   );
