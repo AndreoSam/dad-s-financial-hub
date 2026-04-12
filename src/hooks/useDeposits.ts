@@ -43,7 +43,11 @@ export const useDeposits = () => {
   const handleAdd = async (fd: Omit<FixedDeposit, "id">) => {
     try {
       const { id, ...data } = fd as FixedDeposit;
-      await addDoc(collection(db, COLLECTION), data);
+      // Remove undefined fields — Firestore doesn't accept them
+      const cleanData = Object.fromEntries(
+        Object.entries(data).filter(([_, v]) => v !== undefined)
+      );
+      await addDoc(collection(db, COLLECTION), cleanData);
       toast.success("Fixed deposit added successfully!");
     } catch (error) {
       console.error("Add error:", error);
