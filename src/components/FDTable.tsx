@@ -26,6 +26,7 @@ type SortKey = "bank" | "accountNo" | "valueDate" | "maturityDate" | "period" | 
 type SortDir = "asc" | "desc";
 
 const COLUMNS: { key: SortKey | null; label: string }[] = [
+  { key: null, label: "Sl No." },
   { key: "bank", label: "Bank" },
   { key: "accountNo", label: "A/C No." },
   { key: "valueDate", label: "Value Date" },
@@ -104,8 +105,8 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50">
-              {COLUMNS.map((col) => (
-                <th key={col.label || "actions"} className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
+              {COLUMNS.map((col, i) => (
+                <th key={col.label ? `${col.label}-${i}` : "actions"} className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
                   {col.key ? (
                     <button
                       onClick={() => toggleSort(col.key!)}
@@ -123,11 +124,12 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
             {sorted.length === 0 && (
               <tr><td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-muted-foreground">No deposits match your search.</td></tr>
             )}
-            {sorted.map((fd) => {
+            {sorted.map((fd, idx) => {
               const status = getStatus(fd.maturityDate);
               const bankColor = BANK_COLORS[fd.bank] || "bg-muted text-muted-foreground border-border";
               return (
                 <tr key={fd.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group">
+                  <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs">{idx + 1}</td>
                   <td className="px-4 py-3.5">
                     <Badge variant="outline" className={bankColor}>{fd.bank}</Badge>
                   </td>
