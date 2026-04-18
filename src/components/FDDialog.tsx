@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,31 +8,60 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { BANKS, type FixedDeposit } from "@/data/fixedDeposits";
 
-interface AddFDDialogProps {
-  onAdd: (fd: FixedDeposit) => void;
+interface FDDialogProps {
+  mode: "add" | "edit";
+  initial?: FixedDeposit;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  onSubmit: (fd: FixedDeposit) => void;
+  trigger?: React.ReactNode;
 }
 
-const AddFDDialog = ({ onAdd }: AddFDDialogProps) => {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    accountNo: "",
-    valueDate: "",
-    maturityDate: "",
-    period: "",
-    deposit: "",
-    maturityAmount: "",
-    roi: "",
-    type: "Regular" as "Regular" | "Personal",
-    bank: "",
-    notes: "",
-  });
+const emptyForm = {
+  accountNo: "",
+  valueDate: "",
+  maturityDate: "",
+  period: "",
+  deposit: "",
+  maturityAmount: "",
+  roi: "",
+  type: "Regular" as "Regular" | "Personal",
+  bank: "",
+  notes: "",
+};
+
+const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit, trigger }: FDDialogProps) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+
+  const [form, setForm] = useState(emptyForm);
+
+  useEffect(() => {
+    if (open && initial) {
+      setForm({
+        accountNo: initial.accountNo,
+        valueDate: initial.valueDate,
+        maturityDate: initial.maturityDate,
+        period: initial.period,
+        deposit: String(initial.deposit),
+        maturityAmount: String(initial.maturityAmount),
+        roi: String(initial.roi),
+        type: initial.type,
+        bank: initial.bank,
+        notes: initial.notes ?? "",
+      });
+    } else if (open && !initial) {
+      setForm(emptyForm);
+    }
+  }, [open, initial]);
 
   const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const fd: FixedDeposit = {
-      id: crypto.randomUUID(),
+      id: initial?.id ?? crypto.randomUUID(),
       accountNo: form.accountNo,
       valueDate: form.valueDate,
       maturityDate: form.maturityDate,
@@ -44,21 +73,26 @@ const AddFDDialog = ({ onAdd }: AddFDDialogProps) => {
       bank: form.bank,
       notes: form.notes || undefined,
     };
-    onAdd(fd);
+    onSubmit(fd);
     setOpen(false);
-    setForm({ accountNo: "", valueDate: "", maturityDate: "", period: "", deposit: "", maturityAmount: "", roi: "", type: "Regular", bank: "", notes: "" });
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" /> Add FD
-        </Button>
-      </DialogTrigger>
+      {trigger !== undefined ? (
+        <DialogTrigger asChild>{trigger}</DialogTrigger>
+      ) : mode === "add" ? (
+        <DialogTrigger asChild>
+          <Button className="gap-2">
+            <Plus className="w-4 h-4" /> Add FD
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">Add New Fixed Deposit</DialogTitle>
+          <DialogTitle className="font-display text-xl">
+            {mode === "add" ? "Add New Fixed Deposit" : "Edit Fixed Deposit"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="grid grid-cols-2 gap-4">
@@ -116,11 +150,13 @@ const AddFDDialog = ({ onAdd }: AddFDDialogProps) => {
             <Label htmlFor="notes">Notes (optional)</Label>
             <Textarea id="notes" value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Any additional notes..." rows={2} />
           </div>
-          <Button type="submit" className="w-full">Add Fixed Deposit</Button>
+          <Button type="submit" className="w-full">
+            {mode === "add" ? "Add Fixed Deposit" : "Save Changes"}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>
   );
 };
 
-export default AddFDDialog;
+export default FDDialog;

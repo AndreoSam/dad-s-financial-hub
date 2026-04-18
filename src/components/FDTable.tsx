@@ -1,8 +1,10 @@
+import { useState, useMemo } from "react";
 import { type FixedDeposit, formatCurrency } from "@/data/fixedDeposits";
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInDays, isPast } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import FDDialog from "./FDDialog";
 
 const getStatus = (maturityDate: string) => {
   const maturity = new Date(maturityDate);
@@ -20,65 +22,161 @@ const BANK_COLORS: Record<string, string> = {
   "HDFC Bank": "bg-blue-100 text-blue-800 border-blue-200",
 };
 
+type SortKey = "bank" | "accountNo" | "valueDate" | "maturityDate" | "period" | "deposit" | "maturityAmount" | "roi" | "type" | "status";
+type SortDir = "asc" | "desc";
+
+const COLUMNS: { key: SortKey | null; label: string }[] = [
+  { key: "bank", label: "Bank" },
+  { key: "accountNo", label: "A/C No." },
+  { key: "valueDate", label: "Value Date" },
+  { key: "maturityDate", label: "Maturity" },
+  { key: "period", label: "Period" },
+  { key: "deposit", label: "Deposit" },
+  { key: "maturityAmount", label: "Maturity Amt" },
+  { key: "roi", label: "ROI" },
+  { key: "type", label: "Type" },
+  { key: "status", label: "Status" },
+  { key: null, label: "" },
+];
+
 interface FDTableProps {
   deposits: FixedDeposit[];
   onDelete: (id: string) => void;
+  onUpdate: (fd: FixedDeposit) => void;
 }
 
-const FDTable = ({ deposits, onDelete }: FDTableProps) => (
-  <div className="rounded-xl bg-card border border-border shadow-[var(--shadow-card)] overflow-hidden">
-    <div className="p-5 border-b border-border">
-      <h2 className="text-xl font-display">Fixed Deposits</h2>
-      <p className="text-sm text-muted-foreground mt-1">{deposits.length} deposit{deposits.length !== 1 ? "s" : ""} found</p>
+const statusOrder = (m: string) => {
+  const d = differenceInDays(new Date(m), new Date());
+  if (d < 0) return 0;
+  if (d <= 90) return 1;
+  return 2;
+};
+
+const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
+  const [sortKey, setSortKey] = useState<SortKey>("valueDate");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [editing, setEditing] = useState<FixedDeposit | null>(null);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sorted = useMemo(() => {
+    const arr = [...deposits];
+    arr.sort((a, b) => {
+      let av: number | string;
+      let bv: number | string;
+      if (sortKey === "status") {
+        av = statusOrder(a.maturityDate);
+        bv = statusOrder(b.maturityDate);
+      } else if (sortKey === "valueDate" || sortKey === "maturityDate") {
+        av = new Date(a[sortKey]).getTime();
+        bv = new Date(b[sortKey]).getTime();
+      } else {
+        av = a[sortKey] as number | string;
+        bv = b[sortKey] as number | string;
+      }
+      if (typeof av === "string" && typeof bv === "string") {
+        return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      }
+      return sortDir === "asc" ? (av as number) - (bv as number) : (bv as number) - (av as number);
+    });
+    return arr;
+  }, [deposits, sortKey, sortDir]);
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (sortKey !== k) return <ArrowUpDown className="w-3 h-3 inline ml-1 opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="w-3 h-3 inline ml-1" /> : <ArrowDown className="w-3 h-3 inline ml-1" />;
+  };
+
+  return (
+    <div className="rounded-xl bg-card border border-border shadow-[var(--shadow-card)] overflow-hidden">
+      <div className="p-5 border-b border-border">
+        <h2 className="text-xl font-display">Fixed Deposits</h2>
+        <p className="text-sm text-muted-foreground mt-1">{deposits.length} deposit{deposits.length !== 1 ? "s" : ""} found</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/50">
+              {COLUMNS.map((col) => (
+                <th key={col.label || "actions"} className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
+                  {col.key ? (
+                    <button
+                      onClick={() => toggleSort(col.key!)}
+                      className="inline-flex items-center hover:text-foreground transition-colors"
+                    >
+                      {col.label}
+                      <SortIcon k={col.key} />
+                    </button>
+                  ) : col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 && (
+              <tr><td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-muted-foreground">No deposits match your search.</td></tr>
+            )}
+            {sorted.map((fd) => {
+              const status = getStatus(fd.maturityDate);
+              const bankColor = BANK_COLORS[fd.bank] || "bg-muted text-muted-foreground border-border";
+              return (
+                <tr key={fd.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group">
+                  <td className="px-4 py-3.5">
+                    <Badge variant="outline" className={bankColor}>{fd.bank}</Badge>
+                  </td>
+                  <td className="px-4 py-3.5 font-mono text-xs">{fd.accountNo}</td>
+                  <td className="px-4 py-3.5 whitespace-nowrap">{format(new Date(fd.valueDate), "dd MMM yyyy")}</td>
+                  <td className="px-4 py-3.5 whitespace-nowrap">{format(new Date(fd.maturityDate), "dd MMM yyyy")}</td>
+                  <td className="px-4 py-3.5">{fd.period}</td>
+                  <td className="px-4 py-3.5 font-medium whitespace-nowrap">{formatCurrency(fd.deposit)}</td>
+                  <td className="px-4 py-3.5 font-medium whitespace-nowrap">{formatCurrency(fd.maturityAmount)}</td>
+                  <td className="px-4 py-3.5">{fd.roi}%</td>
+                  <td className="px-4 py-3.5">
+                    <Badge variant="outline" className={fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}>
+                      {fd.type}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <Badge variant="outline" className={status.className}>{status.label}</Badge>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(fd)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(fd.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {editing && (
+        <FDDialog
+          mode="edit"
+          initial={editing}
+          open={!!editing}
+          onOpenChange={(o) => !o && setEditing(null)}
+          onSubmit={(fd) => {
+            onUpdate(fd);
+            setEditing(null);
+          }}
+        />
+      )}
     </div>
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/50">
-            {["Bank", "A/C No.", "Value Date", "Maturity", "Period", "Deposit", "Maturity Amt", "ROI", "Type", "Status", ""].map((h) => (
-              <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {deposits.length === 0 && (
-            <tr><td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">No deposits match your search.</td></tr>
-          )}
-          {deposits.map((fd) => {
-            const status = getStatus(fd.maturityDate);
-            const bankColor = BANK_COLORS[fd.bank] || "bg-muted text-muted-foreground border-border";
-            return (
-              <tr key={fd.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group">
-                <td className="px-4 py-3.5">
-                  <Badge variant="outline" className={bankColor}>{fd.bank}</Badge>
-                </td>
-                <td className="px-4 py-3.5 font-mono text-xs">{fd.accountNo}</td>
-                <td className="px-4 py-3.5 whitespace-nowrap">{format(new Date(fd.valueDate), "dd MMM yyyy")}</td>
-                <td className="px-4 py-3.5 whitespace-nowrap">{format(new Date(fd.maturityDate), "dd MMM yyyy")}</td>
-                <td className="px-4 py-3.5">{fd.period}</td>
-                <td className="px-4 py-3.5 font-medium whitespace-nowrap">{formatCurrency(fd.deposit)}</td>
-                <td className="px-4 py-3.5 font-medium whitespace-nowrap">{formatCurrency(fd.maturityAmount)}</td>
-                <td className="px-4 py-3.5">{fd.roi}%</td>
-                <td className="px-4 py-3.5">
-                  <Badge variant="outline" className={fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}>
-                    {fd.type}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3.5">
-                  <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                </td>
-                <td className="px-4 py-3.5">
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 text-destructive" onClick={() => onDelete(fd.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  </div>
-);
+  );
+};
 
 export default FDTable;

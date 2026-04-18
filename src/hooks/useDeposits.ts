@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   collection,
   onSnapshot,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   query,
   orderBy,
@@ -14,11 +15,13 @@ import { toast } from "sonner";
 
 const COLLECTION = "fixedDeposits";
 
+const clean = <T extends Record<string, unknown>>(data: T) =>
+  Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
+
 export const useDeposits = () => {
   const [deposits, setDeposits] = useState<FixedDeposit[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Real-time listener
   useEffect(() => {
     const q = query(collection(db, COLLECTION), orderBy("valueDate", "desc"));
     const unsub = onSnapshot(
@@ -40,18 +43,25 @@ export const useDeposits = () => {
     return unsub;
   }, []);
 
-  const handleAdd = async (fd: Omit<FixedDeposit, "id">) => {
+  const handleAdd = async (fd: Omit<FixedDeposit, "id"> | FixedDeposit) => {
     try {
       const { id, ...data } = fd as FixedDeposit;
-      // Remove undefined fields — Firestore doesn't accept them
-      const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== undefined)
-      );
-      await addDoc(collection(db, COLLECTION), cleanData);
+      await addDoc(collection(db, COLLECTION), clean(data));
       toast.success("Fixed deposit added successfully!");
     } catch (error) {
       console.error("Add error:", error);
       toast.error("Failed to add deposit.");
+    }
+  };
+
+  const handleUpdate = async (fd: FixedDeposit) => {
+    try {
+      const { id, ...data } = fd;
+      await updateDoc(doc(db, COLLECTION, id), clean(data));
+      toast.success("Fixed deposit updated.");
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error("Failed to update deposit.");
     }
   };
 
@@ -69,7 +79,7 @@ export const useDeposits = () => {
     try {
       for (const fd of defaultDeposits) {
         const { id, ...data } = fd;
-        await addDoc(collection(db, COLLECTION), data);
+        await addDoc(collection(db, COLLECTION), clean(data));
       }
       toast.success("Default deposits loaded!");
     } catch (error) {
@@ -78,5 +88,5 @@ export const useDeposits = () => {
     }
   };
 
-  return { deposits, loading, handleAdd, handleDelete, seedDefaults };
+  return { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults };
 };
