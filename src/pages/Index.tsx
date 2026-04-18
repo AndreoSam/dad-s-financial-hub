@@ -1,22 +1,23 @@
 import { useState, useMemo } from "react";
 import SummaryCards from "@/components/SummaryCards";
 import FDTable from "@/components/FDTable";
-import AddFDDialog from "@/components/AddFDDialog";
+import FDDialog from "@/components/FDDialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { PiggyBank, Search, Database } from "lucide-react";
-import { BANKS, type FixedDeposit } from "@/data/fixedDeposits";
 import { useDeposits } from "@/hooks/useDeposits";
 
 const Index = () => {
-  const { deposits, loading, handleAdd, handleDelete, seedDefaults } = useDeposits();
+  const { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults } = useDeposits();
   const [search, setSearch] = useState("");
   const [bankFilter, setBankFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   const filtered = useMemo(() => {
     let result = deposits;
     if (bankFilter !== "all") result = result.filter((fd) => fd.bank === bankFilter);
+    if (typeFilter !== "all") result = result.filter((fd) => fd.type === typeFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -29,7 +30,7 @@ const Index = () => {
       );
     }
     return result;
-  }, [deposits, search, bankFilter]);
+  }, [deposits, search, bankFilter, typeFilter]);
 
   const activeBanks = useMemo(() => [...new Set(deposits.map((fd) => fd.bank))], [deposits]);
 
@@ -49,7 +50,7 @@ const Index = () => {
                 <Database className="w-4 h-4" /> Load Defaults
               </Button>
             )}
-            <AddFDDialog onAdd={handleAdd} />
+            <FDDialog mode="add" onSubmit={handleAdd} />
           </div>
         </div>
       </header>
@@ -71,7 +72,7 @@ const Index = () => {
                 />
               </div>
               <Select value={bankFilter} onValueChange={setBankFilter}>
-                <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All Banks" />
                 </SelectTrigger>
                 <SelectContent>
@@ -81,9 +82,19 @@ const Index = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Regular">Regular</SelectItem>
+                  <SelectItem value="Personal">Personal</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <FDTable deposits={filtered} onDelete={handleDelete} />
+            <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} />
           </>
         )}
       </main>
