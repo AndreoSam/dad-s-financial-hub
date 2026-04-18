@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,9 @@ const emptyForm = {
   accountNo: "",
   valueDate: "",
   maturityDate: "",
-  period: "",
+  years: "",
+  months: "",
+  days: "",
   deposit: "",
   maturityAmount: "",
   roi: "",
@@ -30,20 +32,67 @@ const emptyForm = {
   notes: "",
 };
 
+type FormState = typeof emptyForm;
+
+// Parse strings like "1 Yr", "1 Yr 7 D", "2 Yr 6 M", "6 M"
+const parsePeriod = (period: string): { years: string; months: string; days: string } => {
+  if (!period) return { years: "", months: "", days: "" };
+  const y = period.match(/(\d+)\s*Yr/i);
+  const m = period.match(/(\d+)\s*M(?!r)/i);
+  const d = period.match(/(\d+)\s*D/i);
+  return {
+    years: y ? y[1] : "",
+    months: m ? m[1] : "",
+    days: d ? d[1] : "",
+  };
+};
+
+const buildPeriod = (years: string, months: string, days: string): string => {
+  const parts: string[] = [];
+  if (years && Number(years) > 0) parts.push(`${Number(years)} Yr`);
+  if (months && Number(months) > 0) parts.push(`${Number(months)} M`);
+  if (days && Number(days) > 0) parts.push(`${Number(days)} D`);
+  return parts.join(" ");
+};
+
+const computeMaturityDate = (valueDate: string, years: string, months: string, days: string): string => {
+  if (!valueDate) return "";
+  const y = Number(years) || 0;
+  const m = Number(months) || 0;
+  const d = Number(days) || 0;
+  if (y === 0 && m === 0 && d === 0) return "";
+  const date = new Date(valueDate);
+  if (isNaN(date.getTime())) return "";
+  date.setFullYear(date.getFullYear() + y);
+  date.setMonth(date.getMonth() + m);
+  date.setDate(date.getDate() + d);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const DRAFT_KEY = "fd-dialog-draft-add";
+
 const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit, trigger }: FDDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
 
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<FormState>(emptyForm);
 
+  // Load initial data on open (edit) or restore draft (add)
   useEffect(() => {
-    if (open && initial) {
+    if (!open) return;
+    if (initial) {
+      const p = parsePeriod(initial.period);
       setForm({
         accountNo: initial.accountNo,
         valueDate: initial.valueDate,
         maturityDate: initial.maturityDate,
-        period: initial.period,
+        years: p.years,
+        months: p.months,
+        days: p.days,
         deposit: String(initial.deposit),
         maturityAmount: String(initial.maturityAmount),
         roi: String(initial.roi),
@@ -51,21 +100,56 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
         bank: initial.bank,
         notes: initial.notes ?? "",
       });
-    } else if (open && !initial) {
+    } else if (mode === "add") {
+      try {
+        const draft = localStorage.getItem(DRAFT_KEY);
+        if (draft) {
+          setForm({ ...emptyForm, ...JSON.parse(draft) });
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
       setForm(emptyForm);
     }
-  }, [open, initial]);
+  }, [open, initial, mode]);
 
-  const update = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
+  // Persist draft for add mode while typing
+  useEffect(() => {
+    if (mode !== "add" || !open) return;
+    const isEmpty = Object.entries(form).every(([k, v]) => v === emptyForm[k as keyof FormState]);
+    try {
+      if (isEmpty) localStorage.removeItem(DRAFT_KEY);
+      else localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+    } catch {
+      /* ignore */
+    }
+  }, [form, mode, open]);
+
+  // Auto-calculate maturity date whenever value date or period changes
+  const autoMaturity = useMemo(
+    () => computeMaturityDate(form.valueDate, form.years, form.months, form.days),
+    [form.valueDate, form.years, form.months, form.days]
+  );
+
+  useEffect(() => {
+    if (autoMaturity && autoMaturity !== form.maturityDate) {
+      setForm((p) => ({ ...p, maturityDate: autoMaturity }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoMaturity]);
+
+  const update = (key: keyof FormState, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const period = buildPeriod(form.years, form.months, form.days);
     const fd: FixedDeposit = {
       id: initial?.id ?? crypto.randomUUID(),
       accountNo: form.accountNo,
       valueDate: form.valueDate,
       maturityDate: form.maturityDate,
-      period: form.period,
+      period,
       deposit: Number(form.deposit),
       maturityAmount: Number(form.maturityAmount),
       roi: Number(form.roi),
@@ -74,6 +158,14 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       notes: form.notes || undefined,
     };
     onSubmit(fd);
+    if (mode === "add") {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
+      setForm(emptyForm);
+    }
     setOpen(false);
   };
 
@@ -126,12 +218,47 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
               <Input id="valueDate" type="date" value={form.valueDate} onChange={(e) => update("valueDate", e.target.value)} required />
             </div>
             <div>
-              <Label htmlFor="maturityDate">Maturity Date</Label>
+              <Label htmlFor="maturityDate">Maturity Date (auto)</Label>
               <Input id="maturityDate" type="date" value={form.maturityDate} onChange={(e) => update("maturityDate", e.target.value)} required />
             </div>
-            <div>
-              <Label htmlFor="period">Period</Label>
-              <Input id="period" value={form.period} onChange={(e) => update("period", e.target.value)} placeholder="e.g. 1 Yr" required />
+            <div className="col-span-2">
+              <Label>Period</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Input
+                    id="years"
+                    type="number"
+                    min="0"
+                    value={form.years}
+                    onChange={(e) => update("years", e.target.value)}
+                    placeholder="Years"
+                  />
+                </div>
+                <div>
+                  <Input
+                    id="months"
+                    type="number"
+                    min="0"
+                    max="11"
+                    value={form.months}
+                    onChange={(e) => update("months", e.target.value)}
+                    placeholder="Months"
+                  />
+                </div>
+                <div>
+                  <Input
+                    id="days"
+                    type="number"
+                    min="0"
+                    value={form.days}
+                    onChange={(e) => update("days", e.target.value)}
+                    placeholder="Days"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Maturity date auto-calculates from value date + period.
+              </p>
             </div>
             <div>
               <Label htmlFor="roi">ROI (%)</Label>
@@ -141,7 +268,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
               <Label htmlFor="deposit">Deposit Amount (₹)</Label>
               <Input id="deposit" type="number" value={form.deposit} onChange={(e) => update("deposit", e.target.value)} placeholder="100000" required />
             </div>
-            <div>
+            <div className="col-span-2">
               <Label htmlFor="maturityAmount">Maturity Amount (₹)</Label>
               <Input id="maturityAmount" type="number" value={form.maturityAmount} onChange={(e) => update("maturityAmount", e.target.value)} placeholder="106600" required />
             </div>
