@@ -230,11 +230,11 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
                     <Badge variant="outline" className={status.className}>{status.label}</Badge>
                   </td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(fd)}>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(fd)} title="Edit">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(fd.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(fd.id)} title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
