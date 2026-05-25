@@ -45,6 +45,7 @@ interface FDTableProps {
   deposits: FixedDeposit[];
   onDelete: (id: string) => void;
   onUpdate: (fd: FixedDeposit) => void;
+  existingAccountNos?: string[];
 }
 
 const statusOrder = (m: string) => {
@@ -54,7 +55,7 @@ const statusOrder = (m: string) => {
   return 2;
 };
 
-const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
+const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTableProps) => {
   const [sortKey, setSortKey] = useState<SortKey>("valueDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [editing, setEditing] = useState<FixedDeposit | null>(null);
@@ -266,6 +267,7 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
           initial={editing}
           open={!!editing}
           onOpenChange={(o) => !o && setEditing(null)}
+          existingAccountNos={existingAccountNos}
           onSubmit={(fd) => {
             onUpdate(fd);
             setEditing(null);
