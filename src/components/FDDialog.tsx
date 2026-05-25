@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { BANKS, type FixedDeposit } from "@/data/fixedDeposits";
+import { toast } from "sonner";
 
 interface FDDialogProps {
   mode: "add" | "edit";
@@ -15,6 +16,7 @@ interface FDDialogProps {
   onOpenChange?: (open: boolean) => void;
   onSubmit: (fd: FixedDeposit) => void;
   trigger?: React.ReactNode;
+  existingAccountNos?: string[];
 }
 
 const emptyForm = {
@@ -74,7 +76,7 @@ const computeMaturityDate = (valueDate: string, years: string, months: string, d
 
 const DRAFT_KEY = "fd-dialog-draft-add";
 
-const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit, trigger }: FDDialogProps) => {
+const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit, trigger, existingAccountNos = [] }: FDDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
@@ -143,19 +145,46 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // ---- Validation ----
+    const accountNo = form.accountNo.trim();
+    if (!accountNo) return toast.error("Account number is required.");
+    if (!/^[A-Za-z0-9-]{4,30}$/.test(accountNo))
+      return toast.error("Account number must be 4-30 alphanumeric characters.");
+    const dupe = existingAccountNos
+      .filter((a) => a && a !== initial?.accountNo)
+      .some((a) => a.toLowerCase() === accountNo.toLowerCase());
+    if (dupe) return toast.error("An FD with this account number already exists.");
+    if (!form.bank) return toast.error("Please select a bank.");
+    if (!form.valueDate) return toast.error("Value date is required.");
+    if (!form.maturityDate) return toast.error("Maturity date is required.");
+    if (new Date(form.maturityDate) <= new Date(form.valueDate))
+      return toast.error("Maturity date must be after value date.");
     const period = buildPeriod(form.years, form.months, form.days);
+    if (!period) return toast.error("Period must be at least 1 day.");
+    const roi = Number(form.roi);
+    if (!form.roi || isNaN(roi) || roi <= 0 || roi > 30)
+      return toast.error("ROI must be between 0 and 30%.");
+    const deposit = Number(form.deposit);
+    if (!form.deposit || isNaN(deposit) || deposit <= 0)
+      return toast.error("Deposit amount must be greater than 0.");
+    const maturityAmount = Number(form.maturityAmount);
+    if (!form.maturityAmount || isNaN(maturityAmount) || maturityAmount <= 0)
+      return toast.error("Maturity amount must be greater than 0.");
+    if (maturityAmount < deposit)
+      return toast.error("Maturity amount cannot be less than deposit.");
+
     const fd: FixedDeposit = {
       id: initial?.id ?? crypto.randomUUID(),
-      accountNo: form.accountNo,
+      accountNo,
       valueDate: form.valueDate,
       maturityDate: form.maturityDate,
       period,
-      deposit: Number(form.deposit),
-      maturityAmount: Number(form.maturityAmount),
-      roi: Number(form.roi),
+      deposit,
+      maturityAmount,
+      roi,
       type: form.type,
       bank: form.bank,
-      notes: form.notes || undefined,
+      notes: form.notes.trim() || undefined,
     };
     onSubmit(fd);
     if (mode === "add") {
