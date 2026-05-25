@@ -184,6 +184,20 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
       {/* Desktop table view */}
       <div className="hidden md:block">
         <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[12%]" />
+            <col className="w-[14%]" />
+            <col className="w-[9%]" />
+            <col className="w-[9%]" />
+            <col className="w-[8%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[6%]" />
+            <col className="w-[8%]" />
+            <col className="w-[9%]" />
+            <col className="w-[70px]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-border bg-muted/50">
               {COLUMNS.map((col, i) => (
