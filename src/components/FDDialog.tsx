@@ -180,15 +180,15 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg w-[calc(100vw-1.5rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "add" ? "Add New Fixed Deposit" : "Edit Fixed Deposit"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="sm:col-span-2">
               <Label htmlFor="accountNo">Account Number</Label>
               <Input id="accountNo" value={form.accountNo} onChange={(e) => update("accountNo", e.target.value)} placeholder="e.g. 1046101000000055" required />
             </div>
@@ -221,7 +221,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
               <Label htmlFor="maturityDate">Maturity Date (auto)</Label>
               <Input id="maturityDate" type="date" value={form.maturityDate} onChange={(e) => update("maturityDate", e.target.value)} required />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Label>Period</Label>
               <div className="grid grid-cols-3 gap-2">
                 <div>
@@ -268,7 +268,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
               <Label htmlFor="deposit">Deposit Amount (₹)</Label>
               <Input id="deposit" type="number" value={form.deposit} onChange={(e) => update("deposit", e.target.value)} placeholder="100000" required />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Label htmlFor="maturityAmount">Maturity Amount (₹)</Label>
               <Input id="maturityAmount" type="number" value={form.maturityAmount} onChange={(e) => update("maturityAmount", e.target.value)} placeholder="106600" required />
             </div>
