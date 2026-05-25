@@ -45,6 +45,7 @@ interface FDTableProps {
   deposits: FixedDeposit[];
   onDelete: (id: string) => void;
   onUpdate: (fd: FixedDeposit) => void;
+  existingAccountNos?: string[];
 }
 
 const statusOrder = (m: string) => {
@@ -54,7 +55,7 @@ const statusOrder = (m: string) => {
   return 2;
 };
 
-const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
+const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTableProps) => {
   const [sortKey, setSortKey] = useState<SortKey>("valueDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [editing, setEditing] = useState<FixedDeposit | null>(null);
@@ -182,12 +183,26 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
       </div>
 
       {/* Desktop table view */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="hidden md:block">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[12%]" />
+            <col className="w-[14%]" />
+            <col className="w-[9%]" />
+            <col className="w-[9%]" />
+            <col className="w-[8%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[6%]" />
+            <col className="w-[8%]" />
+            <col className="w-[9%]" />
+            <col className="w-[70px]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-border bg-muted/50">
               {COLUMNS.map((col, i) => (
-                <th key={col.label ? `${col.label}-${i}` : "actions"} className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
+                <th key={col.label ? `${col.label}-${i}` : "actions"} className="px-2 py-3 text-left font-medium text-muted-foreground text-xs">
                   {col.key ? (
                     <button
                       onClick={() => toggleSort(col.key!)}
@@ -209,33 +224,33 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
               const status = getStatus(fd.maturityDate);
               const bankColor = BANK_COLORS[fd.bank] || "bg-muted text-muted-foreground border-border";
               return (
-                <tr key={fd.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group">
-                  <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs">{idx + 1}</td>
-                  <td className="px-4 py-3.5">
-                    <Badge variant="outline" className={bankColor}>{fd.bank}</Badge>
+                <tr key={fd.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors group align-top">
+                  <td className="px-2 py-3 text-muted-foreground font-mono text-xs">{idx + 1}</td>
+                  <td className="px-2 py-3">
+                    <Badge variant="outline" className={`${bankColor} text-[10px] whitespace-normal leading-tight`}>{fd.bank}</Badge>
                   </td>
-                  <td className="px-4 py-3.5 font-mono text-xs">{fd.accountNo}</td>
-                  <td className="px-4 py-3.5 whitespace-nowrap">{format(new Date(fd.valueDate), "dd MMM yyyy")}</td>
-                  <td className="px-4 py-3.5 whitespace-nowrap">{format(new Date(fd.maturityDate), "dd MMM yyyy")}</td>
-                  <td className="px-4 py-3.5">{fd.period}</td>
-                  <td className="px-4 py-3.5 font-medium whitespace-nowrap">{formatCurrency(fd.deposit)}</td>
-                  <td className="px-4 py-3.5 font-medium whitespace-nowrap">{formatCurrency(fd.maturityAmount)}</td>
-                  <td className="px-4 py-3.5">{fd.roi}%</td>
-                  <td className="px-4 py-3.5">
-                    <Badge variant="outline" className={fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}>
+                  <td className="px-2 py-3 font-mono text-[11px] break-all">{fd.accountNo}</td>
+                  <td className="px-2 py-3 text-xs">{format(new Date(fd.valueDate), "dd MMM yy")}</td>
+                  <td className="px-2 py-3 text-xs">{format(new Date(fd.maturityDate), "dd MMM yy")}</td>
+                  <td className="px-2 py-3 text-xs">{fd.period}</td>
+                  <td className="px-2 py-3 font-medium text-xs">{formatCurrency(fd.deposit)}</td>
+                  <td className="px-2 py-3 font-medium text-xs">{formatCurrency(fd.maturityAmount)}</td>
+                  <td className="px-2 py-3 text-xs">{fd.roi}%</td>
+                  <td className="px-2 py-3">
+                    <Badge variant="outline" className={`text-[10px] ${fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}`}>
                       {fd.type}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <Badge variant="outline" className={status.className}>{status.label}</Badge>
+                  <td className="px-2 py-3">
+                    <Badge variant="outline" className={`${status.className} text-[10px] whitespace-nowrap`}>{status.label}</Badge>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(fd)} title="Edit">
-                        <Pencil className="w-4 h-4" />
+                  <td className="px-1 py-3">
+                    <div className="flex items-center gap-0.5">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(fd)} title="Edit">
+                        <Pencil className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(fd.id)} title="Delete">
-                        <Trash2 className="w-4 h-4" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(fd.id)} title="Delete">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   </td>
@@ -252,6 +267,7 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
           initial={editing}
           open={!!editing}
           onOpenChange={(o) => !o && setEditing(null)}
+          existingAccountNos={existingAccountNos}
           onSubmit={(fd) => {
             onUpdate(fd);
             setEditing(null);

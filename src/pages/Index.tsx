@@ -32,7 +32,11 @@ const Index = () => {
     return result;
   }, [deposits, search, bankFilter, typeFilter]);
 
-  const activeBanks = useMemo(() => [...new Set(deposits.map((fd) => fd.bank))], [deposits]);
+  const activeBanks = useMemo(
+    () => [...new Set(deposits.map((fd) => fd.bank).filter((b) => b && b.trim()))],
+    [deposits]
+  );
+  const existingAccountNos = useMemo(() => deposits.map((d) => d.accountNo), [deposits]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,7 +54,7 @@ const Index = () => {
                 <Database className="w-4 h-4" /> <span className="hidden sm:inline">Load Defaults</span>
               </Button>
             )}
-            <FDDialog mode="add" onSubmit={handleAdd} />
+            <FDDialog mode="add" onSubmit={handleAdd} existingAccountNos={existingAccountNos} />
           </div>
         </div>
       </header>
@@ -94,7 +98,7 @@ const Index = () => {
               </Select>
             </div>
 
-            <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} />
+            <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} existingAccountNos={existingAccountNos} />
           </>
         )}
       </main>
