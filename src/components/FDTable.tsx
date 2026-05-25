@@ -5,6 +5,7 @@ import { format, differenceInDays, isPast } from "date-fns";
 import { Trash2, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FDDialog from "./FDDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const getStatus = (maturityDate: string) => {
   const maturity = new Date(maturityDate);
@@ -97,11 +98,91 @@ const FDTable = ({ deposits, onDelete, onUpdate }: FDTableProps) => {
 
   return (
     <div className="rounded-xl bg-card border border-border shadow-[var(--shadow-card)] overflow-hidden">
-      <div className="p-5 border-b border-border">
-        <h2 className="text-xl font-display">Fixed Deposits</h2>
-        <p className="text-sm text-muted-foreground mt-1">{deposits.length} deposit{deposits.length !== 1 ? "s" : ""} found</p>
+      <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h2 className="text-lg sm:text-xl font-display">Fixed Deposits</h2>
+          <p className="text-sm text-muted-foreground mt-1">{deposits.length} deposit{deposits.length !== 1 ? "s" : ""} found</p>
+        </div>
+        {/* Mobile sort selector */}
+        <div className="md:hidden flex gap-2">
+          <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {COLUMNS.filter((c) => c.key).map((c) => (
+                <SelectItem key={c.key!} value={c.key!}>Sort: {c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" className="h-9 px-2" onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}>
+            {sortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+          </Button>
+        </div>
       </div>
-      <div className="overflow-x-auto">
+
+      {/* Mobile card view */}
+      <div className="md:hidden divide-y divide-border">
+        {sorted.length === 0 && (
+          <div className="px-4 py-10 text-center text-muted-foreground text-sm">No deposits match your search.</div>
+        )}
+        {sorted.map((fd, idx) => {
+          const status = getStatus(fd.maturityDate);
+          const bankColor = BANK_COLORS[fd.bank] || "bg-muted text-muted-foreground border-border";
+          return (
+            <div key={fd.id} className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-mono text-muted-foreground">#{idx + 1}</span>
+                    <Badge variant="outline" className={bankColor}>{fd.bank}</Badge>
+                    <Badge variant="outline" className={fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}>
+                      {fd.type}
+                    </Badge>
+                    <Badge variant="outline" className={status.className}>{status.label}</Badge>
+                  </div>
+                  <p className="font-mono text-xs text-muted-foreground mt-1.5 break-all">A/C {fd.accountNo}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(fd)}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(fd.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm pt-1">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Deposit</p>
+                  <p className="font-medium">{formatCurrency(fd.deposit)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Maturity</p>
+                  <p className="font-medium">{formatCurrency(fd.maturityAmount)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Value Date</p>
+                  <p>{format(new Date(fd.valueDate), "dd MMM yyyy")}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Matures</p>
+                  <p>{format(new Date(fd.maturityDate), "dd MMM yyyy")}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Period</p>
+                  <p>{fd.period}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">ROI</p>
+                  <p>{fd.roi}%</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50">
