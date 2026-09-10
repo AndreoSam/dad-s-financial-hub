@@ -12,7 +12,7 @@ export const enableMaturityNotifications = async (): Promise<NotificationSetupRe
     return { status: "unsupported" };
   }
 
-  const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
+  const { deleteToken, getMessaging, getToken, isSupported } = await import("firebase/messaging");
 
   if (!(await isSupported())) return { status: "unsupported" };
 
@@ -23,12 +23,42 @@ export const enableMaturityNotifications = async (): Promise<NotificationSetupRe
     `${import.meta.env.BASE_URL}firebase-messaging-sw.js`
   );
   await navigator.serviceWorker.ready;
+  await registration.update();
 
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY?.trim();
-  const token = await getToken(getMessaging(app), {
-    serviceWorkerRegistration: registration,
-    ...(vapidKey ? { vapidKey } : {}),
-  });
+  if (!vapidKey) {
+    throw new Error("The Firebase Web Push public key is missing from Vercel.");
+  }
+
+  const messaging = getMessaging(app);
+  const getCurrentToken = () =>
+    getToken(messaging, {
+      serviceWorkerRegistration: registration,
+      vapidKey,
+    });
+
+  let token: string;
+  try {
+    token = await getCurrentToken();
+  } catch (error) {
+    // Browsers keep the PushSubscription after a VAPID key is changed. Firebase
+    // then attempts to reuse it and PushManager rejects the new key. Clear the
+    // stale browser/FCM state once and retry with the configured public key.
+    if (!(error instanceof DOMException) || error.name !== "InvalidAccessError") {
+      throw error;
+    }
+
+    try {
+      await deleteToken(messaging);
+    } catch {
+      // There may be no Firebase token yet even though PushManager has a
+      // subscription, so continue with the browser-level cleanup below.
+    }
+
+    const existingSubscription = await registration.pushManager.getSubscription();
+    await existingSubscription?.unsubscribe();
+    token = await getCurrentToken();
+  }
 
   if (!token) throw new Error("Firebase did not return a notification token.");
 
