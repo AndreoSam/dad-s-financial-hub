@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import SummaryCards from "@/components/SummaryCards";
 import FDTable from "@/components/FDTable";
 import FDDialog from "@/components/FDDialog";
+import NotificationButton from "@/components/NotificationButton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ const Index = () => {
             <h1 className="text-lg sm:text-xl font-display truncate">FD Tracker</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <NotificationButton />
             {deposits.length === 0 && !loading && (
               <Button variant="outline" size="sm" onClick={seedDefaults} className="gap-2">
                 <Database className="w-4 h-4" /> <span className="hidden sm:inline">Load Defaults</span>
