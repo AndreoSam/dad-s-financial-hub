@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { getMessaging, onMessage, isSupported } from "firebase/messaging";
 import { Bell, BellRing, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,8 @@ const NotificationButton = () => {
     let unsubscribe: (() => void) | undefined;
     let active = true;
 
-    isSupported().then((supported) => {
+    import("firebase/messaging").then(async ({ getMessaging, onMessage, isSupported }) => {
+      const supported = await isSupported();
       if (!active) return;
       if (!supported) {
         setStatus("unsupported");
@@ -40,6 +40,9 @@ const NotificationButton = () => {
           console.error("Notification token refresh error:", error)
         );
       }
+    }).catch((error) => {
+      console.error("Notification support check failed:", error);
+      if (active) setStatus("unsupported");
     });
 
     return () => {
@@ -69,7 +72,10 @@ const NotificationButton = () => {
       console.error("Notification setup error:", error);
       setStatus("idle");
       toast.error("Could not enable phone reminders", {
-        description: "Check that Firebase Messaging and the notification function are configured.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Check that Firebase Messaging and the notification function are configured.",
       });
     }
   };
