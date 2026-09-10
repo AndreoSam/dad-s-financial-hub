@@ -1,8 +1,4 @@
-import { httpsCallable, getFunctions } from "firebase/functions";
-import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { app } from "@/lib/firebase";
-
-const functions = getFunctions(app, "asia-south1");
 
 export type NotificationSetupResult =
   | { status: "enabled" }
@@ -17,9 +13,14 @@ const getPlatform = () => {
 };
 
 export const enableMaturityNotifications = async (): Promise<NotificationSetupResult> => {
-  if (!("Notification" in window) || !("serviceWorker" in navigator) || !(await isSupported())) {
+  if (!("Notification" in window) || !("serviceWorker" in navigator)) {
     return { status: "unsupported" };
   }
+
+  const [{ getMessaging, getToken, isSupported }, { getFunctions, httpsCallable }] =
+    await Promise.all([import("firebase/messaging"), import("firebase/functions")]);
+
+  if (!(await isSupported())) return { status: "unsupported" };
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") return { status: "denied" };
@@ -37,12 +38,21 @@ export const enableMaturityNotifications = async (): Promise<NotificationSetupRe
 
   if (!token) throw new Error("Firebase did not return a notification token.");
 
-  const registerToken = httpsCallable(functions, "registerNotificationToken");
-  await registerToken({
-    token,
-    platform: getPlatform(),
-    userAgent: navigator.userAgent.slice(0, 500),
-  });
+  const registerToken = httpsCallable(
+    getFunctions(app, "asia-south1"),
+    "registerNotificationToken"
+  );
+  try {
+    await registerToken({
+      token,
+      platform: getPlatform(),
+      userAgent: navigator.userAgent.slice(0, 500),
+    });
+  } catch (error) {
+    throw new Error("The notification server is not deployed or cannot be reached.", {
+      cause: error,
+    });
+  }
 
   localStorage.setItem("maturity-notifications-enabled", "true");
   return { status: "enabled" };
@@ -50,5 +60,6 @@ export const enableMaturityNotifications = async (): Promise<NotificationSetupRe
 
 export const maturityNotificationsAreEnabled = () =>
   typeof window !== "undefined" &&
-  Notification.permission === "granted" &&
+  "Notification" in window &&
+  window.Notification.permission === "granted" &&
   localStorage.getItem("maturity-notifications-enabled") === "true";
