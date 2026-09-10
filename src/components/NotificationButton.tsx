@@ -20,6 +20,13 @@ import {
 
 type Status = "idle" | "loading" | "enabled" | "denied" | "unsupported";
 
+const unsupportedNotificationMessage = () => {
+  const isAppleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  return isAppleMobile
+    ? "On iPhone or iPad, add this site to the Home Screen and open it there. Web notifications require iOS/iPadOS 16.4 or later."
+    : "Open the site in an up-to-date Chrome or Edge browser over HTTPS, outside private/incognito mode.";
+};
+
 const NotificationButton = () => {
   const [status, setStatus] = useState<Status>(() =>
     maturityNotificationsAreEnabled() ? "enabled" : "idle"
@@ -96,7 +103,10 @@ const NotificationButton = () => {
           description: "Allow notifications for this site in your browser settings, then try again.",
         });
       } else {
-        toast.error("Notifications are not supported by this browser.");
+        toast.error("Notifications are not available here", {
+          description: unsupportedNotificationMessage(),
+          duration: 10000,
+        });
       }
     } catch (error) {
       console.error("Notification setup error:", error);
@@ -129,11 +139,11 @@ const NotificationButton = () => {
         variant={isEnabled ? "secondary" : "outline"}
         size="sm"
         onClick={enable}
-        disabled={isLoading || status === "unsupported"}
+        disabled={isLoading}
         className="gap-2"
         title={
           status === "unsupported"
-            ? "Notifications are not supported on this browser"
+            ? "Open for notification setup requirements"
             : isEnabled
               ? "View this device's private notification code"
               : "Enable maturity reminders on this device"
