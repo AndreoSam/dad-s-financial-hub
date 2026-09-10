@@ -1,4 +1,4 @@
-import { app } from "@/lib/firebase";
+import { app, db } from "@/lib/firebase";
 
 export type NotificationSetupResult =
   | { status: "enabled" }
@@ -12,13 +12,21 @@ const getPlatform = () => {
   return "desktop";
 };
 
+const tokenDocumentId = async (token: string) => {
+  const bytes = new TextEncoder().encode(token);
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+};
+
 export const enableMaturityNotifications = async (): Promise<NotificationSetupResult> => {
   if (!("Notification" in window) || !("serviceWorker" in navigator)) {
     return { status: "unsupported" };
   }
 
-  const [{ getMessaging, getToken, isSupported }, { getFunctions, httpsCallable }] =
-    await Promise.all([import("firebase/messaging"), import("firebase/functions")]);
+  const [{ getMessaging, getToken, isSupported }, { doc, serverTimestamp, setDoc }] =
+    await Promise.all([import("firebase/messaging"), import("firebase/firestore")]);
 
   if (!(await isSupported())) return { status: "unsupported" };
 
@@ -38,20 +46,24 @@ export const enableMaturityNotifications = async (): Promise<NotificationSetupRe
 
   if (!token) throw new Error("Firebase did not return a notification token.");
 
-  const registerToken = httpsCallable(
-    getFunctions(app, "asia-south1"),
-    "registerNotificationToken"
-  );
   try {
-    await registerToken({
-      token,
-      platform: getPlatform(),
-      userAgent: navigator.userAgent.slice(0, 500),
-    });
+    const subscriptionId = await tokenDocumentId(token);
+    await setDoc(
+      doc(db, "notificationSubscriptions", subscriptionId),
+      {
+        token,
+        platform: getPlatform(),
+        userAgent: navigator.userAgent.slice(0, 500),
+        enabled: true,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
   } catch (error) {
-    throw new Error("The notification server is not deployed or cannot be reached.", {
-      cause: error,
-    });
+    throw new Error(
+      "Firestore blocked notification registration. Publish the included Firestore rules, then try again.",
+      { cause: error }
+    );
   }
 
   localStorage.setItem("maturity-notifications-enabled", "true");

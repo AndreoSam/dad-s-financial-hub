@@ -1,0 +1,43 @@
+name: Send FD maturity reminders
+
+on:
+  schedule:
+    # 9:00 AM Asia/Kolkata. GitHub may start scheduled jobs a few minutes late.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      send_test:
+        description: Send an immediate test notification
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: scripts/notifications/package-lock.json
+
+      - name: Install notification job
+        run: npm ci --prefix scripts/notifications
+
+      - name: Test reminder dates
+        run: npm test --prefix scripts/notifications
+
+      - name: Send reminders
+        run: npm run send --prefix scripts/notifications
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SEND_TEST: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test || false }}

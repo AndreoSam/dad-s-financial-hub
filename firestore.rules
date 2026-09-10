@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // This application currently has no authentication. Preserve its existing
+    // fixed-deposit access until authentication is added.
+    match /fixedDeposits/{depositId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // Browsers may register a push token but may never list or read tokens.
+    // The GitHub Action uses Firebase Admin and bypasses these client rules.
+    match /notificationSubscriptions/{subscriptionId} {
+      allow read, delete: if false;
+      allow create, update: if validSubscription();
+    }
+
+    function validSubscription() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'token', 'platform', 'userAgent', 'enabled', 'updatedAt'
+        ])
+        && data.token is string
+        && data.token.size() >= 20
+        && data.token.size() <= 4096
+        && data.platform in ['android', 'ios', 'desktop']
+        && data.userAgent is string
+        && data.userAgent.size() <= 500
+        && data.enabled == true
+        && data.updatedAt == request.time;
+    }
+  }
+}
