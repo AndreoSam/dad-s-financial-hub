@@ -1,32 +1,18 @@
-import { app, db } from "@/lib/firebase";
+import { app } from "@/lib/firebase";
 
 export type NotificationSetupResult =
-  | { status: "enabled" }
+  | { status: "enabled"; token: string }
   | { status: "denied" }
   | { status: "unsupported" };
 
-const getPlatform = () => {
-  const userAgent = navigator.userAgent.toLowerCase();
-  if (/iphone|ipad|ipod/.test(userAgent)) return "ios";
-  if (/android/.test(userAgent)) return "android";
-  return "desktop";
-};
-
-const tokenDocumentId = async (token: string) => {
-  const bytes = new TextEncoder().encode(token);
-  const hash = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(hash), (byte) =>
-    byte.toString(16).padStart(2, "0")
-  ).join("");
-};
+const TOKEN_STORAGE_KEY = "maturity-notification-token";
 
 export const enableMaturityNotifications = async (): Promise<NotificationSetupResult> => {
   if (!("Notification" in window) || !("serviceWorker" in navigator)) {
     return { status: "unsupported" };
   }
 
-  const [{ getMessaging, getToken, isSupported }, { doc, serverTimestamp, setDoc }] =
-    await Promise.all([import("firebase/messaging"), import("firebase/firestore")]);
+  const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
 
   if (!(await isSupported())) return { status: "unsupported" };
 
@@ -46,29 +32,13 @@ export const enableMaturityNotifications = async (): Promise<NotificationSetupRe
 
   if (!token) throw new Error("Firebase did not return a notification token.");
 
-  try {
-    const subscriptionId = await tokenDocumentId(token);
-    await setDoc(
-      doc(db, "notificationSubscriptions", subscriptionId),
-      {
-        token,
-        platform: getPlatform(),
-        userAgent: navigator.userAgent.slice(0, 500),
-        enabled: true,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  } catch (error) {
-    throw new Error(
-      "Firestore blocked notification registration. Publish the included Firestore rules, then try again.",
-      { cause: error }
-    );
-  }
-
   localStorage.setItem("maturity-notifications-enabled", "true");
-  return { status: "enabled" };
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  return { status: "enabled", token };
 };
+
+export const getStoredNotificationToken = () =>
+  typeof window === "undefined" ? null : localStorage.getItem(TOKEN_STORAGE_KEY);
 
 export const maturityNotificationsAreEnabled = () =>
   typeof window !== "undefined" &&

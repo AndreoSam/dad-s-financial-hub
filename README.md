@@ -19,24 +19,24 @@ not required.
    create a Web Push certificate under Project settings → Cloud Messaging.
 2. Set the certificate's public key as `VITE_FIREBASE_VAPID_KEY` in Vercel and
    redeploy the web app. The Web Push public key is safe to expose.
-3. Publish `firestore.rules` from Firebase Console → Firestore Database →
-   Rules, or from a signed-in terminal:
-
-   ```sh
-   npx firebase-tools deploy --only firestore:rules
-   ```
-
-4. In Firebase Console → Project settings → Service accounts, generate a new
+3. In Firebase Console → Project settings → Service accounts, generate a new
    private key. In GitHub → repository Settings → Secrets and variables →
    Actions, create a repository secret named `FIREBASE_SERVICE_ACCOUNT` and
    paste the complete downloaded JSON as its value. Never commit this JSON.
-5. Open the deployed app on each device and press **Enable reminders**. On
-   iPhone/iPad, first add the site to the Home Screen, open the installed web
-   app, and then press the button.
+4. Open the deployed app on each device and press **Enable reminders**. On
+   iPhone/iPad, first add the site to the Home Screen. Copy the private device
+   code shown by the app.
+5. In GitHub Actions secrets, add `FCM_DEVICE_TOKENS`. Paste the copied JSON
+   list. For multiple devices, combine the tokens in one list:
+
+   ```json
+   ["first-device-token", "second-device-token"]
+   ```
+
 6. In GitHub → Actions → **Send FD maturity reminders**, choose **Run workflow**
    with the test option enabled. The registered devices should receive a test
    notification immediately.
 
-The scheduler runs daily at approximately 9:00 AM in `Asia/Kolkata`. Browsers
-can write their own token but cannot read the `notificationSubscriptions`
-collection; the GitHub Action uses the private service account to send pushes.
+The scheduler runs daily at approximately 9:00 AM in `Asia/Kolkata`. Device
+tokens and the Firebase service account are stored only in encrypted GitHub
+Actions secrets; no public visitor can subscribe to your financial reminders.

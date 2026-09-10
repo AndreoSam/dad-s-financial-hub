@@ -12,6 +12,24 @@ if (!credentialsJson) {
   throw new Error("Add FIREBASE_SERVICE_ACCOUNT to the repository's GitHub Actions secrets.");
 }
 
+const deviceTokensJson = process.env.FCM_DEVICE_TOKENS;
+if (!deviceTokensJson) {
+  throw new Error("Add FCM_DEVICE_TOKENS to the repository's GitHub Actions secrets.");
+}
+
+let deviceTokens;
+try {
+  deviceTokens = [...new Set(JSON.parse(deviceTokensJson))].filter(
+    (token) => typeof token === "string" && token.length >= 20
+  );
+} catch {
+  throw new Error("FCM_DEVICE_TOKENS must be a JSON list such as [\"token\"].");
+}
+
+if (deviceTokens.length === 0) {
+  throw new Error("FCM_DEVICE_TOKENS does not contain a valid device token.");
+}
+
 let credentials;
 try {
   credentials = JSON.parse(credentialsJson);
@@ -65,32 +83,8 @@ const buildMessage = (dueDeposits) => {
   };
 };
 
-const deleteStaleTokens = async (responses, subscriptions, db) => {
-  const staleCodes = new Set([
-    "messaging/registration-token-not-registered",
-    "messaging/invalid-registration-token",
-    "messaging/invalid-argument",
-  ]);
-  const deletions = responses.flatMap((result, index) =>
-    !result.success && staleCodes.has(result.error?.code)
-      ? [db.collection("notificationSubscriptions").doc(subscriptions[index].id).delete()]
-      : []
-  );
-  await Promise.all(deletions);
-};
-
 const main = async () => {
   const db = getFirestore();
-  const subscriptionSnapshot = await db
-    .collection("notificationSubscriptions")
-    .where("enabled", "==", true)
-    .get();
-
-  if (subscriptionSnapshot.empty) {
-    throw new Error("No phones or browsers have enabled maturity notifications yet.");
-  }
-
-  const subscriptions = subscriptionSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   let title;
   let body;
 
@@ -114,15 +108,17 @@ const main = async () => {
     ({ title, body } = buildMessage(dueDeposits));
   }
 
-  for (let start = 0; start < subscriptions.length; start += 500) {
-    const batch = subscriptions.slice(start, start + 500);
+  for (let start = 0; start < deviceTokens.length; start += 500) {
+    const batch = deviceTokens.slice(start, start + 500);
     const response = await getMessaging().sendEachForMulticast({
-      tokens: batch.map((subscription) => subscription.token),
+      tokens: batch,
       data: { title, body, url: "/", tag: `fd-maturity-${todayInIndia()}` },
       webpush: { headers: { Urgency: "high", TTL: "86400" } },
     });
-    await deleteStaleTokens(response.responses, batch, db);
     console.log(`Sent ${response.successCount}; failed ${response.failureCount}.`);
+    response.responses.forEach((result, index) => {
+      if (!result.success) console.error(`Token ${start + index + 1}:`, result.error?.code);
+    });
   }
 };
 

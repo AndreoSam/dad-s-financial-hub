@@ -40,4 +40,5 @@ jobs:
         run: npm run send --prefix scripts/notifications
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FCM_DEVICE_TOKENS: ${{ secrets.FCM_DEVICE_TOKENS }}
           SEND_TEST: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test || false }}
