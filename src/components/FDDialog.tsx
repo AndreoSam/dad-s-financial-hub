@@ -148,6 +148,24 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoMaturity]);
 
+  // When in "yearly interest" mode, auto-calculate maturity amount and ROI
+  useEffect(() => {
+    if (form.interestMode !== "yearly") return;
+    const deposit = Number(form.deposit);
+    const yearly = Number(form.yearlyInterest);
+    const t = periodInYears(form.years, form.months, form.days);
+    if (deposit > 0 && yearly > 0 && t > 0) {
+      const maturity = Math.round(deposit + yearly * t);
+      const roi = ((yearly / deposit) * 100).toFixed(2);
+      setForm((p) =>
+        p.maturityAmount === String(maturity) && p.roi === roi
+          ? p
+          : { ...p, maturityAmount: String(maturity), roi }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.interestMode, form.deposit, form.yearlyInterest, form.years, form.months, form.days]);
+
   const update = (key: keyof FormState, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handleSubmit = (e: React.FormEvent) => {
