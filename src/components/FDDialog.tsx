@@ -186,6 +186,11 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       return toast.error("Maturity date must be after value date.");
     const period = buildPeriod(form.years, form.months, form.days);
     if (!period) return toast.error("Period must be at least 1 day.");
+    if (form.interestMode === "yearly") {
+      const yearly = Number(form.yearlyInterest);
+      if (!form.yearlyInterest || isNaN(yearly) || yearly <= 0)
+        return toast.error("Yearly interest must be greater than 0.");
+    }
     const roi = Number(form.roi);
     if (!form.roi || isNaN(roi) || roi <= 0 || roi > 30)
       return toast.error("ROI must be between 0 and 30%.");
