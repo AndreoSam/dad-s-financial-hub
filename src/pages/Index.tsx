@@ -44,7 +44,7 @@ const Index = () => {
 const testRecaptcha = () => {
   grecaptcha.enterprise.ready(async () => {
     const token = await grecaptcha.enterprise.execute(
-      "YOUR_SITE_KEY",
+      "6LeuX7wtAAAAAKdORPJVaQsS2NYG62KaqKAMCwQy",
       {
         action: "payment"
       }
@@ -72,8 +72,8 @@ const testRecaptcha = () => {
       </header>
       <main className="container max-w-6xl mx-auto px-2.5 sm:px-4 py-3 sm:py-8 space-y-3 sm:space-y-8">
         <button onClick={testRecaptcha}>
-  Test reCAPTCHA
-</button>
+          Test reCAPTCHA
+        </button>
         <Tabs value={section} onValueChange={setSection}>
           <TabsList className="w-full sm:w-auto"><TabsTrigger value="deposits" className="flex-1">Fixed deposits</TabsTrigger><TabsTrigger value="insurance" className="flex-1">Insurance</TabsTrigger></TabsList>
           <TabsContent value="deposits" className="space-y-4 sm:space-y-8">
