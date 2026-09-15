@@ -10,10 +10,11 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { type FixedDeposit, defaultDeposits } from "@/data/fixedDeposits";
+import { type FixedDeposit, type InsurancePolicy, defaultDeposits } from "@/data/fixedDeposits";
 import { toast } from "sonner";
 
 const COLLECTION = "fixedDeposits";
+const INSURANCE_COLLECTION = "insurancePolicies";
 
 const clean = <T extends Record<string, unknown>>(data: T) =>
   Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
@@ -89,4 +90,41 @@ export const useDeposits = () => {
   };
 
   return { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults };
+};
+
+export const useInsurancePolicies = () => {
+  const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, INSURANCE_COLLECTION), orderBy("renewalDate", "asc"));
+    return onSnapshot(q, (snapshot) => {
+      setPolicies(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as InsurancePolicy[]);
+      setLoading(false);
+    }, (error) => {
+      console.error("Insurance load error:", error);
+      toast.error("Failed to load insurance policies.");
+      setLoading(false);
+    });
+  }, []);
+
+  const addPolicy = async (policy: InsurancePolicy) => {
+    try {
+      const { id, ...data } = policy;
+      await addDoc(collection(db, INSURANCE_COLLECTION), clean(data));
+      toast.success("Insurance policy added successfully!");
+    } catch (error) { console.error("Insurance add error:", error); toast.error("Failed to add insurance policy."); }
+  };
+  const updatePolicy = async (policy: InsurancePolicy) => {
+    try {
+      const { id, ...data } = policy;
+      await updateDoc(doc(db, INSURANCE_COLLECTION, id), clean(data));
+      toast.success("Insurance policy updated.");
+    } catch (error) { console.error("Insurance update error:", error); toast.error("Failed to update insurance policy."); }
+  };
+  const deletePolicy = async (id: string) => {
+    try { await deleteDoc(doc(db, INSURANCE_COLLECTION, id)); toast.success("Insurance policy removed."); }
+    catch (error) { console.error("Insurance delete error:", error); toast.error("Failed to delete insurance policy."); }
+  };
+  return { policies, loading, addPolicy, updatePolicy, deletePolicy };
 };
