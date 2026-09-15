@@ -40,3 +40,12 @@ not required.
 The scheduler runs daily at approximately 9:00 AM in `Asia/Kolkata`. Device
 tokens and the Firebase service account are stored only in encrypted GitHub
 Actions secrets; no public visitor can subscribe to your financial reminders.
+# Deposits and insurance policies
+
+The Fixed deposits and Insurance tabs keep the two record types separate. Add and edit forms show a complete review before saving. Back to edit preserves entries; only Confirm and save writes the record. Deleting a record requires a separate confirmation identifying that record. Failed writes keep the form or confirmation open for retry.
+
+Insurance policies are stored in the `insurancePolicies` Firestore collection in the existing Firebase project. Fields include policy number, insurer, holder, name/type, sum assured, premium/frequency, policy dates, next premium date, nominee, and notes. This section tracks policy information; it does not add insurance push notifications to the existing FD reminder scheduler.
+
+Deployment: if Firestore rules restrict access by collection, authorize `insurancePolicies` for the same intended users as deposits. Firestore rules are managed outside this repository and have not been changed by this feature. Do not make the collection publicly writable to resolve a permissions error. The insurance tab reports database access failures instead of presenting them as an empty list.
+
+Verification: `npm test`, `npm run build`, and `npx tsc --noEmit -p tsconfig.app.json`. Tests mock persistence; they do not modify live financial records.

@@ -8,6 +8,7 @@ import {
   doc,
   query,
   orderBy,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { type FixedDeposit, defaultDeposits } from "@/data/fixedDeposits";
@@ -51,17 +52,19 @@ export const useDeposits = () => {
     } catch (error) {
       console.error("Add error:", error);
       toast.error("Failed to add deposit.");
+      throw error;
     }
   };
 
   const handleUpdate = async (fd: FixedDeposit) => {
     try {
       const { id, ...data } = fd;
-      await updateDoc(doc(db, COLLECTION, id), clean(data));
+      await updateDoc(doc(db, COLLECTION, id), clean({ ...data, notes: data.notes ?? "" }));
       toast.success("Fixed deposit updated.");
     } catch (error) {
       console.error("Update error:", error);
       toast.error("Failed to update deposit.");
+      throw error;
     }
   };
 
@@ -72,19 +75,23 @@ export const useDeposits = () => {
     } catch (error) {
       console.error("Delete error:", error);
       toast.error("Failed to delete deposit.");
+      throw error;
     }
   };
 
   const seedDefaults = async () => {
     try {
+      const batch = writeBatch(db);
       for (const fd of defaultDeposits) {
         const { id, ...data } = fd;
-        await addDoc(collection(db, COLLECTION), clean(data));
+        batch.set(doc(db, COLLECTION, `default-${id}`), clean(data));
       }
+      await batch.commit();
       toast.success("Default deposits loaded!");
     } catch (error) {
       console.error("Seed error:", error);
       toast.error("Failed to seed defaults.");
+      throw error;
     }
   };
 
