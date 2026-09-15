@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { BANKS, type FixedDeposit } from "@/data/fixedDeposits";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { formatCurrency } from "@/data/fixedDeposits";
 
 interface FDDialogProps {
   mode: "add" | "edit";
@@ -87,6 +89,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
   const setOpen = onOpenChange ?? setInternalOpen;
 
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [pending, setPending] = useState<FixedDeposit | null>(null);
 
   // Load initial data on open (edit) or restore draft (add)
   useEffect(() => {
@@ -229,7 +232,12 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       bank: form.bank,
       notes: form.notes.trim() || undefined,
     };
-    onSubmit(fd);
+    setPending(fd);
+  };
+
+  const confirmSave = () => {
+    if (!pending) return;
+    onSubmit(pending);
     if (mode === "add") {
       try {
         localStorage.removeItem(DRAFT_KEY);
@@ -238,6 +246,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       }
       setForm(emptyForm);
     }
+    setPending(null);
     setOpen(false);
   };
 
@@ -400,6 +409,25 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
           </Button>
         </form>
       </DialogContent>
+      <AlertDialog open={!!pending} onOpenChange={(value) => !value && setPending(null)}>
+        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Review fixed deposit</AlertDialogTitle>
+            <AlertDialogDescription>Please check these details before {mode === "add" ? "adding" : "saving"}.</AlertDialogDescription>
+          </AlertDialogHeader>
+          {pending && <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-muted/50 p-3 text-sm">
+            <span className="text-muted-foreground">Account / Bank</span><span className="font-medium text-right break-all">{pending.accountNo} · {pending.bank}</span>
+            <span className="text-muted-foreground">Deposit</span><span className="font-medium text-right">{formatCurrency(pending.deposit)}</span>
+            <span className="text-muted-foreground">Maturity amount</span><span className="font-medium text-right">{formatCurrency(pending.maturityAmount)}</span>
+            <span className="text-muted-foreground">ROI / Period</span><span className="font-medium text-right">{pending.roi}% · {pending.period}</span>
+            <span className="text-muted-foreground">Dates</span><span className="font-medium text-right">{pending.valueDate} → {pending.maturityDate}</span>
+          </div>}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSave}>{mode === "add" ? "Confirm & add" : "Confirm & save"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };
