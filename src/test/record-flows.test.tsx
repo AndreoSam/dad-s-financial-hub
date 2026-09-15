@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import FDDialog from "@/components/FDDialog";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import PolicyDialog from "@/components/PolicyDialog";
-import { InsurancePolicy, validatePolicy } from "@/data/insurance";
+import { InsurancePolicy, validatePolicy, readPolicy } from "@/data/insurance";
 import { defaultDeposits } from "@/data/fixedDeposits";
 
 afterEach(cleanup);
@@ -80,7 +80,7 @@ describe("record confirmation flows", () => {
   it("adds a policy only after confirmation", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(<PolicyDialog policies={[]} onClose={vi.fn()} onSave={save} />);
-    for (const [label, value] of [["Policy number *", "NEW-123"], ["Insurer *", "Example"], ["Policyholder *", "Test"], ["Sum assured (₹) *", "100000"], ["Premium per payment (₹) *", "5000"], ["Start date *", "2026-01-01"]]) {
+    for (const [label, value] of [["Policy number *", "NEW-123"], ["Insurer *", "Example"], ["Policyholder *", "Test"], ["Sum assured (₹, optional)", "100000"], ["Premium per payment (₹) *", "5000"], ["Start date *", "2026-01-01"]]) {
       fireEvent.change(screen.getByLabelText(label), { target: { value } });
     }
     fireEvent.click(screen.getByRole("button", { name: "Review details" }));
@@ -92,6 +92,11 @@ describe("record confirmation flows", () => {
 });
 
 describe("insurance validation", () => {
+  it("preserves policies saved by the initial insurance release", () => {
+    const old = readPolicy("old-id", { policyNo: "OLD-1", insuredName: "Existing holder", insurer: "LIC", policyType: "Custom life cover", premium: 5000, premiumFrequency: "Half-Yearly", startDate: "2026-01-01", renewalDate: "2027-01-01" });
+    expect(old).toMatchObject({ id: "old-id", policyNumber: "OLD-1", policyholder: "Existing holder", type: "Custom life cover", endDate: "2027-01-01", premiumFrequency: "Half-yearly", sumAssured: 0 });
+    expect(validatePolicy(old, [])).toBeNull();
+  });
   it("allows editing a policy but rejects duplicate insurer/number pairs", () => {
     expect(validatePolicy(policy, [policy])).toBeNull();
     expect(validatePolicy({ ...policy, id: "another", policyNumber: "life-123" }, [policy])).toContain("already exists");

@@ -62,7 +62,7 @@ export default function PolicyDialog({ initial, policies, onClose, onSave }: {
     { key: "insurer", label: "Insurer", required: true },
     { key: "policyholder", label: "Policyholder", required: true },
     { key: "policyName", label: "Policy name (optional)" },
-    { key: "sumAssured", label: "Sum assured (₹)", type: "number", required: true },
+    { key: "sumAssured", label: "Sum assured (₹, optional)", type: "number" },
     { key: "premium", label: "Premium per payment (₹)", type: "number", required: true },
     { key: "startDate", label: "Start date", type: "date", required: true },
     { key: "endDate", label: "End / maturity date (optional)", type: "date" },
@@ -87,6 +87,7 @@ export default function PolicyDialog({ initial, policies, onClose, onSave }: {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><Label htmlFor="policy-type">Policy type</Label>
               <select id="policy-type" className="flex h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.type} onChange={(e) => update("type", e.target.value)}>
+                {!policyTypes.some((type) => type === form.type) && <option>{form.type}</option>}
                 {policyTypes.map((type) => <option key={type}>{type}</option>)}
               </select>
             </div>
@@ -98,7 +99,7 @@ export default function PolicyDialog({ initial, policies, onClose, onSave }: {
             {fields.map(({ key, label, type = "text", required }) => <div key={key}>
               <Label htmlFor={`policy-${key}`}>{label}{required ? " *" : ""}</Label>
               <Input id={`policy-${key}`} type={type} required={required} value={form[key]}
-                min={type === "number" ? "0.01" : undefined} step={type === "number" ? "0.01" : undefined}
+                min={type === "number" ? key === "sumAssured" ? "0" : "0.01" : undefined} step={type === "number" ? "0.01" : undefined}
                 onChange={(e) => update(key, e.target.value)} />
             </div>)}
           </div>

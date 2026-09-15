@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { collection, doc, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { InsurancePolicy } from "@/data/insurance";
+import { InsurancePolicy, readPolicy } from "@/data/insurance";
 import { toast } from "sonner";
 
 const COLLECTION = "insurancePolicies";
@@ -10,7 +10,7 @@ export function useInsurance() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   useEffect(() => onSnapshot(collection(db, COLLECTION), (snapshot) => {
-    setPolicies(snapshot.docs.map((d) => ({ ...d.data(), id: d.id }) as InsurancePolicy)
+    setPolicies(snapshot.docs.map((d) => readPolicy(d.id, d.data()))
       .sort((a, b) => a.policyholder.localeCompare(b.policyholder)));
     setLoading(false);
     setError("");
@@ -22,7 +22,10 @@ export function useInsurance() {
   const save = async (policy: InsurancePolicy) => {
     const { id, ...data } = policy;
     // A stable document ID also makes retrying a save safe.
-    await setDoc(doc(db, COLLECTION, id), data);
+    await setDoc(doc(db, COLLECTION, id), {
+      ...data, policyNo: data.policyNumber, insuredName: data.policyholder,
+      policyType: data.type, renewalDate: data.endDate,
+    }, { merge: true });
     toast.success("Insurance policy saved.");
   };
   const remove = async (id: string) => {
