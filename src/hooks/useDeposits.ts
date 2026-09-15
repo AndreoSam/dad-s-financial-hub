@@ -11,6 +11,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 import { type FixedDeposit, type InsurancePolicy, defaultDeposits } from "@/data/fixedDeposits";
 import { toast } from "sonner";
 
@@ -19,6 +20,16 @@ const INSURANCE_COLLECTION = "insurancePolicies";
 
 const clean = <T extends Record<string, unknown>>(data: T) =>
   Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
+
+const protect = async (action: string) => {
+  try {
+    await verifyRecaptcha(action);
+  } catch (error) {
+    console.error("reCAPTCHA error:", error);
+    toast.error("Security check failed. Please try again.");
+    throw error;
+  }
+};
 
 export const useDeposits = () => {
   const [deposits, setDeposits] = useState<FixedDeposit[]>([]);
@@ -29,10 +40,7 @@ export const useDeposits = () => {
     const unsub = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        })) as FixedDeposit[];
+        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as FixedDeposit[];
         setDeposits(data);
         setLoading(false);
       },
@@ -47,41 +55,45 @@ export const useDeposits = () => {
 
   const handleAdd = async (fd: Omit<FixedDeposit, "id"> | FixedDeposit) => {
     try {
+      await protect("add_deposit");
       const { id, ...data } = fd as FixedDeposit;
       await addDoc(collection(db, COLLECTION), clean(data));
       toast.success("Fixed deposit added successfully!");
     } catch (error) {
       console.error("Add error:", error);
-      toast.error("Failed to add deposit.");
+      if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to add deposit.");
       throw error;
     }
   };
 
   const handleUpdate = async (fd: FixedDeposit) => {
     try {
+      await protect("update_deposit");
       const { id, ...data } = fd;
       await updateDoc(doc(db, COLLECTION, id), clean({ ...data, notes: data.notes ?? "" }));
       toast.success("Fixed deposit updated.");
     } catch (error) {
       console.error("Update error:", error);
-      toast.error("Failed to update deposit.");
+      if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to update deposit.");
       throw error;
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
+      await protect("delete_deposit");
       await deleteDoc(doc(db, COLLECTION, id));
       toast.success("Fixed deposit removed.");
     } catch (error) {
       console.error("Delete error:", error);
-      toast.error("Failed to delete deposit.");
+      if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to delete deposit.");
       throw error;
     }
   };
 
   const seedDefaults = async () => {
     try {
+      await protect("seed_deposits");
       const batch = writeBatch(db);
       for (const fd of defaultDeposits) {
         const { id, ...data } = fd;
@@ -91,7 +103,7 @@ export const useDeposits = () => {
       toast.success("Default deposits loaded!");
     } catch (error) {
       console.error("Seed error:", error);
-      toast.error("Failed to seed defaults.");
+      if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to seed defaults.");
       throw error;
     }
   };
@@ -117,21 +129,29 @@ export const useInsurancePolicies = () => {
 
   const addPolicy = async (policy: InsurancePolicy) => {
     try {
+      await protect("add_insurance_policy");
       const { id, ...data } = policy;
       await addDoc(collection(db, INSURANCE_COLLECTION), clean(data));
       toast.success("Insurance policy added successfully!");
-    } catch (error) { console.error("Insurance add error:", error); toast.error("Failed to add insurance policy."); }
+    } catch (error) { console.error("Insurance add error:", error); if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to add insurance policy."); throw error; }
   };
+
   const updatePolicy = async (policy: InsurancePolicy) => {
     try {
+      await protect("update_insurance_policy");
       const { id, ...data } = policy;
       await updateDoc(doc(db, INSURANCE_COLLECTION, id), clean(data));
       toast.success("Insurance policy updated.");
-    } catch (error) { console.error("Insurance update error:", error); toast.error("Failed to update insurance policy."); }
+    } catch (error) { console.error("Insurance update error:", error); if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to update insurance policy."); throw error; }
   };
+
   const deletePolicy = async (id: string) => {
-    try { await deleteDoc(doc(db, INSURANCE_COLLECTION, id)); toast.success("Insurance policy removed."); }
-    catch (error) { console.error("Insurance delete error:", error); toast.error("Failed to delete insurance policy."); }
+    try {
+      await protect("delete_insurance_policy");
+      await deleteDoc(doc(db, INSURANCE_COLLECTION, id));
+      toast.success("Insurance policy removed.");
+    } catch (error) { console.error("Insurance delete error:", error); if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to delete insurance policy."); throw error; }
   };
+
   return { policies, loading, addPolicy, updatePolicy, deletePolicy };
 };
