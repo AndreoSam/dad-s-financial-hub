@@ -319,17 +319,49 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 Maturity date auto-calculates from value date + period.
               </p>
             </div>
-            <div>
-              <Label htmlFor="roi">ROI (%)</Label>
-              <Input id="roi" type="number" step="0.01" value={form.roi} onChange={(e) => update("roi", e.target.value)} placeholder="6.6" required />
+            <div className="sm:col-span-2">
+              <Label>Interest Calculation</Label>
+              <Select value={form.interestMode} onValueChange={(v) => update("interestMode", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="roi">Enter ROI (%)</SelectItem>
+                  <SelectItem value="yearly">Enter Yearly Interest (₹/year)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="deposit">Deposit Amount (₹)</Label>
               <Input id="deposit" type="number" value={form.deposit} onChange={(e) => update("deposit", e.target.value)} placeholder="100000" required />
             </div>
+            {form.interestMode === "roi" ? (
+              <div>
+                <Label htmlFor="roi">ROI (%)</Label>
+                <Input id="roi" type="number" step="0.01" value={form.roi} onChange={(e) => update("roi", e.target.value)} placeholder="6.6" required />
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="yearlyInterest">Yearly Interest (₹)</Label>
+                <Input id="yearlyInterest" type="number" value={form.yearlyInterest} onChange={(e) => update("yearlyInterest", e.target.value)} placeholder="6600" required />
+              </div>
+            )}
             <div className="sm:col-span-2">
-              <Label htmlFor="maturityAmount">Maturity Amount (₹)</Label>
-              <Input id="maturityAmount" type="number" value={form.maturityAmount} onChange={(e) => update("maturityAmount", e.target.value)} placeholder="106600" required />
+              <Label htmlFor="maturityAmount">
+                Maturity Amount (₹){form.interestMode === "yearly" ? " (auto)" : ""}
+              </Label>
+              <Input
+                id="maturityAmount"
+                type="number"
+                value={form.maturityAmount}
+                onChange={(e) => update("maturityAmount", e.target.value)}
+                placeholder="106600"
+                readOnly={form.interestMode === "yearly"}
+                required
+              />
+              {form.interestMode === "yearly" && form.roi && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  = Deposit + ₹{Number(form.yearlyInterest).toLocaleString("en-IN")}/yr × period · effective ROI {form.roi}%
+                </p>
+              )}
             </div>
           </div>
           <div>
