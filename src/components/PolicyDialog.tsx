@@ -71,20 +71,23 @@ export default function PolicyDialog({ initial, policies, onClose, onSave }: {
   ];
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
-      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="compact-record-dialog w-[calc(100vw-1rem)] sm:max-w-xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader className="compact-record-header">
           <DialogTitle>{review ? "Review Insurance Policy" : initial ? "Edit Insurance Policy" : "Add Insurance Policy"}</DialogTitle>
           <DialogDescription>{review ? "Check the details, then confirm to save." : "Keep your policy and premium details together. Required fields are marked *."}</DialogDescription>
         </DialogHeader>
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        {review ? <div className="space-y-4">
+        {review ? <div className="compact-record-form space-y-4">
+          <div className="compact-record-scroll">
           <RecordSummary rows={policySummary(review)} />
-          <div className="flex gap-2">
+          </div>
+          <div className="compact-record-actions flex gap-2">
             <Button variant="outline" disabled={saving} onClick={() => { setReview(null); setError(""); }}>Back to edit</Button>
             <Button disabled={saving} onClick={save}>{saving ? "Saving…" : "Confirm and save"}</Button>
           </div>
-        </div> : <form onSubmit={submit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        </div> : <form onSubmit={submit} className="compact-record-form space-y-4">
+          <div className="compact-record-scroll space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
             <div><Label htmlFor="policy-type">Policy type</Label>
               <select id="policy-type" className="flex h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.type} onChange={(e) => update("type", e.target.value)}>
                 {!policyTypes.some((type) => type === form.type) && <option>{form.type}</option>}
@@ -104,9 +107,12 @@ export default function PolicyDialog({ initial, policies, onClose, onSave }: {
             </div>)}
           </div>
           <div><Label htmlFor="policy-notes">Notes (optional)</Label>
-            <Textarea id="policy-notes" value={form.notes} onChange={(e) => update("notes", e.target.value)} />
+            <Textarea id="policy-notes" rows={2} value={form.notes} onChange={(e) => update("notes", e.target.value)} />
           </div>
+          </div>
+          <div className="compact-record-actions">
           <Button type="submit" className="w-full">Review details</Button>
+          </div>
         </form>}
       </DialogContent>
     </Dialog>
