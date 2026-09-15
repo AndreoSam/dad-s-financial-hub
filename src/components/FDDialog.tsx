@@ -29,6 +29,8 @@ const emptyForm = {
   deposit: "",
   maturityAmount: "",
   roi: "",
+  interestMode: "roi" as "roi" | "yearly",
+  yearlyInterest: "",
   type: "Regular" as "Regular" | "Personal",
   bank: "",
   notes: "",
