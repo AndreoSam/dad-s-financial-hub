@@ -41,18 +41,7 @@ const Index = () => {
     [deposits]
   );
   const existingAccountNos = useMemo(() => deposits.map((d) => d.accountNo), [deposits]);
-const testRecaptcha = () => {
-  grecaptcha.enterprise.ready(async () => {
-    const token = await grecaptcha.enterprise.execute(
-      "6LeuX7wtAAAAAKdORPJVaQsS2NYG62KaqKAMCwQy",
-      {
-        action: "payment"
-      }
-    );
 
-    console.log("reCAPTCHA TOKEN:", token);
-  });
-};
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
@@ -71,9 +60,6 @@ const testRecaptcha = () => {
         </div>
       </header>
       <main className="container max-w-6xl mx-auto px-2.5 sm:px-4 py-3 sm:py-8 space-y-3 sm:space-y-8">
-        <button onClick={testRecaptcha}>
-          Test reCAPTCHA
-        </button>
         <Tabs value={section} onValueChange={setSection}>
           <TabsList className="w-full sm:w-auto"><TabsTrigger value="deposits" className="flex-1">Fixed deposits</TabsTrigger><TabsTrigger value="insurance" className="flex-1">Insurance</TabsTrigger></TabsList>
           <TabsContent value="deposits" className="space-y-4 sm:space-y-8">
