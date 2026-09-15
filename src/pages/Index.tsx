@@ -8,9 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { PiggyBank, Search, Database } from "lucide-react";
 import { useDeposits } from "@/hooks/useDeposits";
+import { useInsurancePolicies } from "@/hooks/useDeposits";
+import InsurancePolicies from "@/components/InsurancePolicies";
 
 const Index = () => {
   const { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults } = useDeposits();
+  const { policies, loading: insuranceLoading, addPolicy, updatePolicy, deletePolicy } = useInsurancePolicies();
   const [search, setSearch] = useState("");
   const [bankFilter, setBankFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -101,6 +104,7 @@ const Index = () => {
             </div>
 
             <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} existingAccountNos={existingAccountNos} />
+            {!insuranceLoading && <InsurancePolicies policies={policies} onAdd={addPolicy} onUpdate={updatePolicy} onDelete={deletePolicy} />}
           </>
         )}
       </main>
