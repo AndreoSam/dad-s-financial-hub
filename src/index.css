@@ -71,3 +71,114 @@
     font-family: var(--font-display);
   }
 }
+
+/* Scope compact phone layouts to financial entry dialogs, including review. */
+@media (max-width: 639px) {
+  .compact-record-dialog {
+    display: flex;
+    flex-direction: column;
+    width: calc(100vw - 1.5rem);
+    max-width: 28rem;
+    max-height: 82vh;
+    max-height: 82dvh;
+    padding: 0.75rem;
+    gap: 0.625rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+  }
+
+  .compact-record-header {
+    flex-shrink: 0;
+    padding-right: 1.75rem;
+    text-align: left;
+  }
+
+  .compact-record-dialog > button {
+    display: grid;
+    place-items: center;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .compact-record-header h2 {
+    font-size: 1rem;
+    line-height: 1.25rem;
+  }
+
+  .compact-record-header p {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .compact-record-form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 0.625rem;
+    padding-top: 0;
+  }
+
+  .compact-record-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.125rem 0.25rem;
+    scroll-padding-block: 0.5rem;
+  }
+
+  .compact-record-scroll .grid > div {
+    min-width: 0;
+  }
+
+  .compact-record-scroll label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .compact-record-scroll input,
+  .compact-record-scroll select,
+  .compact-record-scroll button[role="combobox"] {
+    width: 100%;
+    min-width: 0;
+    height: 2.25rem;
+    padding-inline: 0.5rem;
+    /* Keep editable text at 16px to avoid focus zoom on iOS. */
+    font-size: 1rem;
+  }
+
+  .compact-record-scroll input[type="date"] {
+    appearance: none;
+  }
+
+  .compact-record-scroll textarea {
+    min-height: 3.25rem;
+    font-size: 1rem;
+  }
+
+  .compact-record-actions {
+    flex-shrink: 0;
+    margin-top: 0 !important;
+    padding-top: 0.625rem;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+  }
+
+  .compact-record-actions button {
+    flex: 1;
+    min-height: 2.5rem;
+    padding-inline: 0.5rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Native date controls need more room on the narrowest phones. */
+@media (max-width: 379px) {
+  .compact-record-scroll .grid > div:has(input[type="date"]) {
+    grid-column: 1 / -1;
+  }
+}

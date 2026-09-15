@@ -272,14 +272,15 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="sm:max-w-lg w-[calc(100vw-1rem)] max-h-[94vh] overflow-y-auto p-3 sm:p-6">
-        <DialogHeader>
+      <DialogContent className="compact-record-dialog sm:max-w-lg w-[calc(100vw-1rem)] max-h-[94vh] overflow-y-auto p-3 sm:p-6">
+        <DialogHeader className="compact-record-header">
           <DialogTitle className="font-display text-lg sm:text-xl">
             {review ? "Review Fixed Deposit" : mode === "add" ? "Add New Fixed Deposit" : "Edit Fixed Deposit"}
           </DialogTitle>
           <DialogDescription>{review ? "Confirm the details below to save this deposit." : "Enter the deposit details, then review them before saving."}</DialogDescription>
         </DialogHeader>
-        {review ? <div className="space-y-4">
+        {review ? <div className="compact-record-form space-y-4">
+          <div className="compact-record-scroll space-y-3">
           <p className="text-sm text-muted-foreground">Check these details before saving.</p>
           <RecordSummary rows={[
             ["Account number", review.accountNo], ["Bank", review.bank], ["Type", review.type],
@@ -289,17 +290,19 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
             ...(form.interestMode === "yearly" ? [["Yearly interest", formatCurrency(Number(form.yearlyInterest))] as const] : []),
             ["Notes", review.notes ?? ""],
           ]} />
-          <div className="flex gap-2">
+          </div>
+          <div className="compact-record-actions flex gap-2">
             <Button variant="outline" disabled={saving} onClick={() => setReview(null)}>Back to edit</Button>
             <Button disabled={saving} onClick={confirmSave}>{saving ? "Saving…" : "Confirm and save"}</Button>
           </div>
-        </div> : <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 pt-1 sm:pt-2">
+        </div> : <form onSubmit={handleSubmit} className="compact-record-form space-y-3 sm:space-y-4 pt-1 sm:pt-2">
+          <div className="compact-record-scroll space-y-3 sm:space-y-4">
           <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <Label htmlFor="accountNo">Account Number</Label>
               <Input id="accountNo" value={form.accountNo} onChange={(e) => update("accountNo", e.target.value)} placeholder="e.g. 1046101000000055" required />
             </div>
-             <div className="col-span-2 sm:col-span-1">
+             <div>
               <Label htmlFor="bank">Bank / Institution</Label>
               <Select value={form.bank} onValueChange={(v) => update("bank", v)} required>
                 <SelectTrigger><SelectValue placeholder="Select bank" /></SelectTrigger>
@@ -310,7 +313,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 </SelectContent>
               </Select>
             </div>
-             <div className="col-span-2 sm:col-span-1">
+             <div>
               <Label htmlFor="type">Type</Label>
               <Select value={form.type} onValueChange={(v) => update("type", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -328,7 +331,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
               <Label htmlFor="maturityDate">Maturity Date (auto)</Label>
               <Input id="maturityDate" type="date" value={form.maturityDate} onChange={(e) => update("maturityDate", e.target.value)} required />
             </div>
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <Label>Period</Label>
                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
            <div>
@@ -367,7 +370,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 Maturity date auto-calculates from value date + period.
               </p>
             </div>
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <Label>Interest Calculation</Label>
               <Select value={form.interestMode} onValueChange={(v) => update("interestMode", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -401,7 +404,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 <Input id="yearlyInterest" type="number" value={form.yearlyInterest} onChange={(e) => update("yearlyInterest", e.target.value)} placeholder="6600" required />
               </div>
             )}
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
               <Label htmlFor="maturityAmount">
                 Maturity Amount (₹){form.interestMode === "yearly" ? " (auto)" : ""}
               </Label>
@@ -430,9 +433,12 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
             <Label htmlFor="notes">Notes (optional)</Label>
              <Textarea id="notes" value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Any additional notes..." rows={2} className="min-h-16" />
           </div>
+          </div>
+          <div className="compact-record-actions">
           <Button type="submit" className="w-full">
             Review details
           </Button>
+          </div>
         </form>}
       </DialogContent>
     </Dialog>
