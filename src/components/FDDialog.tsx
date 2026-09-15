@@ -29,6 +29,8 @@ const emptyForm = {
   deposit: "",
   maturityAmount: "",
   roi: "",
+  interestMode: "roi" as "roi" | "yearly",
+  yearlyInterest: "",
   type: "Regular" as "Regular" | "Personal",
   bank: "",
   notes: "",
@@ -56,6 +58,9 @@ const buildPeriod = (years: string, months: string, days: string): string => {
   if (days && Number(days) > 0) parts.push(`${Number(days)} D`);
   return parts.join(" ");
 };
+
+const periodInYears = (years: string, months: string, days: string): number =>
+  (Number(years) || 0) + (Number(months) || 0) / 12 + (Number(days) || 0) / 365;
 
 const computeMaturityDate = (valueDate: string, years: string, months: string, days: string): string => {
   if (!valueDate) return "";
@@ -98,6 +103,8 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
         deposit: String(initial.deposit),
         maturityAmount: String(initial.maturityAmount),
         roi: String(initial.roi),
+        interestMode: "roi",
+        yearlyInterest: "",
         type: initial.type,
         bank: initial.bank,
         notes: initial.notes ?? "",
@@ -141,6 +148,24 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoMaturity]);
 
+  // When in "yearly interest" mode, auto-calculate maturity amount and ROI
+  useEffect(() => {
+    if (form.interestMode !== "yearly") return;
+    const deposit = Number(form.deposit);
+    const yearly = Number(form.yearlyInterest);
+    const t = periodInYears(form.years, form.months, form.days);
+    if (deposit > 0 && yearly > 0 && t > 0) {
+      const maturity = Math.round(deposit + yearly * t);
+      const roi = ((yearly / deposit) * 100).toFixed(2);
+      setForm((p) =>
+        p.maturityAmount === String(maturity) && p.roi === roi
+          ? p
+          : { ...p, maturityAmount: String(maturity), roi }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.interestMode, form.deposit, form.yearlyInterest, form.years, form.months, form.days]);
+
   const update = (key: keyof FormState, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -161,6 +186,11 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       return toast.error("Maturity date must be after value date.");
     const period = buildPeriod(form.years, form.months, form.days);
     if (!period) return toast.error("Period must be at least 1 day.");
+    if (form.interestMode === "yearly") {
+      const yearly = Number(form.yearlyInterest);
+      if (!form.yearlyInterest || isNaN(yearly) || yearly <= 0)
+        return toast.error("Yearly interest must be greater than 0.");
+    }
     const roi = Number(form.roi);
     if (!form.roi || isNaN(roi) || roi <= 0 || roi > 30)
       return toast.error("ROI must be between 0 and 30%.");
@@ -289,17 +319,49 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 Maturity date auto-calculates from value date + period.
               </p>
             </div>
-            <div>
-              <Label htmlFor="roi">ROI (%)</Label>
-              <Input id="roi" type="number" step="0.01" value={form.roi} onChange={(e) => update("roi", e.target.value)} placeholder="6.6" required />
+            <div className="sm:col-span-2">
+              <Label>Interest Calculation</Label>
+              <Select value={form.interestMode} onValueChange={(v) => update("interestMode", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="roi">Enter ROI (%)</SelectItem>
+                  <SelectItem value="yearly">Enter Yearly Interest (₹/year)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="deposit">Deposit Amount (₹)</Label>
               <Input id="deposit" type="number" value={form.deposit} onChange={(e) => update("deposit", e.target.value)} placeholder="100000" required />
             </div>
+            {form.interestMode === "roi" ? (
+              <div>
+                <Label htmlFor="roi">ROI (%)</Label>
+                <Input id="roi" type="number" step="0.01" value={form.roi} onChange={(e) => update("roi", e.target.value)} placeholder="6.6" required />
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="yearlyInterest">Yearly Interest (₹)</Label>
+                <Input id="yearlyInterest" type="number" value={form.yearlyInterest} onChange={(e) => update("yearlyInterest", e.target.value)} placeholder="6600" required />
+              </div>
+            )}
             <div className="sm:col-span-2">
-              <Label htmlFor="maturityAmount">Maturity Amount (₹)</Label>
-              <Input id="maturityAmount" type="number" value={form.maturityAmount} onChange={(e) => update("maturityAmount", e.target.value)} placeholder="106600" required />
+              <Label htmlFor="maturityAmount">
+                Maturity Amount (₹){form.interestMode === "yearly" ? " (auto)" : ""}
+              </Label>
+              <Input
+                id="maturityAmount"
+                type="number"
+                value={form.maturityAmount}
+                onChange={(e) => update("maturityAmount", e.target.value)}
+                placeholder="106600"
+                readOnly={form.interestMode === "yearly"}
+                required
+              />
+              {form.interestMode === "yearly" && form.roi && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  = Deposit + ₹{Number(form.yearlyInterest).toLocaleString("en-IN")}/yr × period · effective ROI {form.roi}%
+                </p>
+              )}
             </div>
           </div>
           <div>
