@@ -12,6 +12,20 @@ export interface FixedDeposit {
   notes?: string;
 }
 
+export interface InsurancePolicy {
+  id: string;
+  policyNo: string;
+  insurer: string;
+  policyType: string;
+  insuredName: string;
+  premium: number;
+  premiumFrequency: "Monthly" | "Quarterly" | "Half-Yearly" | "Yearly";
+  startDate: string;
+  renewalDate: string;
+  sumAssured?: number;
+  notes?: string;
+}
+
 export const BANKS = [
   "South Indian Bank",
   "SBI",
@@ -24,6 +38,8 @@ export const BANKS = [
   "Indian Bank",
   "Other",
 ] as const;
+
+export const INSURERS = ["LIC", "HDFC Life", "SBI Life", "ICICI Prudential", "Star Health", "Other"] as const;
 
 export const defaultDeposits: FixedDeposit[] = [
   { id: "1", accountNo: "1046101000000055", valueDate: "2025-11-25", maturityDate: "2026-11-25", period: "1 Yr", deposit: 339446, maturityAmount: 362410, roi: 6.6, type: "Regular", bank: "South Indian Bank" },
