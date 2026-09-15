@@ -18,16 +18,16 @@ const SummaryCards = ({ deposits }: SummaryCardsProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-5">
       {cards.map((card) => (
-        <div key={card.label} className="rounded-xl bg-card p-5 border border-border shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-shadow">
-          <div className="flex items-center gap-3 mb-3">
-            <div className={`rounded-lg p-2 ${card.accent}`}>
-              <card.icon className="w-5 h-5" />
+        <div key={card.label} className="rounded-md sm:rounded-xl bg-card p-3 sm:p-5 border border-border shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-shadow min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-3 min-w-0">
+            <div className={`rounded-md sm:rounded-lg p-1.5 sm:p-2 shrink-0 ${card.accent}`}>
+              <card.icon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <span className="text-sm text-muted-foreground font-medium">{card.label}</span>
+            <span className="text-[11px] leading-tight sm:text-sm text-muted-foreground font-medium">{card.label}</span>
           </div>
-          <p className="text-2xl font-bold font-display tracking-tight">{card.value}</p>
+          <p className="text-base sm:text-2xl font-bold font-display break-words">{card.value}</p>
         </div>
       ))}
     </div>

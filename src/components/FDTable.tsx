@@ -98,23 +98,23 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
   };
 
   return (
-    <div className="rounded-xl bg-card border border-border shadow-[var(--shadow-card)] overflow-hidden">
-      <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+    <div className="rounded-md sm:rounded-xl bg-card border border-border shadow-[var(--shadow-card)] overflow-hidden">
+      <div className="p-3 sm:p-5 border-b border-border flex items-end justify-between gap-2 sm:gap-3">
         <div>
-          <h2 className="text-lg sm:text-xl font-display">Fixed Deposits</h2>
-          <p className="text-sm text-muted-foreground mt-1">{deposits.length} deposit{deposits.length !== 1 ? "s" : ""} found</p>
+          <h2 className="text-base sm:text-xl font-display">Fixed Deposits</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">{deposits.length} deposit{deposits.length !== 1 ? "s" : ""} found</p>
         </div>
         {/* Mobile sort selector */}
-        <div className="md:hidden flex gap-2">
+        <div className="md:hidden flex gap-1.5 min-w-0">
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-8 w-[116px] text-[11px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {COLUMNS.filter((c) => c.key).map((c) => (
                 <SelectItem key={c.key!} value={c.key!}>Sort: {c.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" className="h-9 px-2" onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}>
+          <Button variant="outline" size="sm" className="h-8 w-8 px-0" aria-label="Reverse sort order" onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}>
             {sortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
           </Button>
         </div>
@@ -129,20 +129,20 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
           const status = getStatus(fd.maturityDate);
           const bankColor = BANK_COLORS[fd.bank] || "bg-muted text-muted-foreground border-border";
           return (
-            <div key={fd.id} className="p-4 space-y-2">
+            <div key={fd.id} className="p-3 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-mono text-muted-foreground">#{idx + 1}</span>
-                    <Badge variant="outline" className={bankColor}>{fd.bank}</Badge>
-                    <Badge variant="outline" className={fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}>
+                     <Badge variant="outline" className={`${bankColor} px-1.5 py-0 text-[10px]`}>{fd.bank}</Badge>
+                     <Badge variant="outline" className={`px-1.5 py-0 text-[10px] ${fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}`}>
                       {fd.type}
                     </Badge>
-                    <Badge variant="outline" className={status.className}>{status.label}</Badge>
+                     <Badge variant="outline" className={`${status.className} px-1.5 py-0 text-[10px]`}>{status.label}</Badge>
                   </div>
-                  <p className="font-mono text-xs text-muted-foreground mt-1.5 break-all">A/C {fd.accountNo}</p>
+                   <p className="font-mono text-[11px] text-muted-foreground mt-1 break-all">A/C {fd.accountNo}</p>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center shrink-0">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(fd)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -151,29 +151,29 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm pt-1">
+               <div className="grid grid-cols-3 gap-x-2 gap-y-1.5 text-xs pt-0.5">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Deposit</p>
-                  <p className="font-medium">{formatCurrency(fd.deposit)}</p>
+                   <p className="text-[9px] uppercase text-muted-foreground">Deposit</p>
+                   <p className="font-medium leading-tight">{formatCurrency(fd.deposit)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Maturity</p>
-                  <p className="font-medium">{formatCurrency(fd.maturityAmount)}</p>
+                   <p className="text-[9px] uppercase text-muted-foreground">Maturity</p>
+                   <p className="font-medium leading-tight">{formatCurrency(fd.maturityAmount)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Value Date</p>
-                  <p>{format(new Date(fd.valueDate), "dd MMM yyyy")}</p>
+                   <p className="text-[9px] uppercase text-muted-foreground">Value Date</p>
+                   <p>{format(new Date(fd.valueDate), "dd MMM yy")}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Matures</p>
-                  <p>{format(new Date(fd.maturityDate), "dd MMM yyyy")}</p>
+                   <p className="text-[9px] uppercase text-muted-foreground">Matures</p>
+                   <p>{format(new Date(fd.maturityDate), "dd MMM yy")}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Period</p>
+                   <p className="text-[9px] uppercase text-muted-foreground">Period</p>
                   <p>{fd.period}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">ROI</p>
+                   <p className="text-[9px] uppercase text-muted-foreground">ROI</p>
                   <p>{fd.roi}%</p>
                 </div>
               </div>
