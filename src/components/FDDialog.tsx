@@ -59,6 +59,9 @@ const buildPeriod = (years: string, months: string, days: string): string => {
   return parts.join(" ");
 };
 
+const periodInYears = (years: string, months: string, days: string): number =>
+  (Number(years) || 0) + (Number(months) || 0) / 12 + (Number(days) || 0) / 365;
+
 const computeMaturityDate = (valueDate: string, years: string, months: string, days: string): string => {
   if (!valueDate) return "";
   const y = Number(years) || 0;
