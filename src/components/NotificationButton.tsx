@@ -140,7 +140,7 @@ const NotificationButton = () => {
         size="sm"
         onClick={enable}
         disabled={isLoading}
-        className="gap-2"
+        className="h-8 w-8 px-0 sm:h-9 sm:w-auto sm:px-3 gap-2"
         title={
           status === "unsupported"
             ? "Open for notification setup requirements"

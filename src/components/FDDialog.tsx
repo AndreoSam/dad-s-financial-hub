@@ -247,24 +247,24 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
         <DialogTrigger asChild>{trigger}</DialogTrigger>
       ) : mode === "add" ? (
         <DialogTrigger asChild>
-          <Button className="gap-2">
-            <Plus className="w-4 h-4" /> Add FD
+          <Button size="sm" className="h-8 px-2 sm:h-10 sm:px-4 gap-1.5" aria-label="Add fixed deposit">
+            <Plus className="w-4 h-4" /> <span className="hidden min-[380px]:inline">Add FD</span>
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="sm:max-w-lg w-[calc(100vw-1.5rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="sm:max-w-lg w-[calc(100vw-1rem)] max-h-[94vh] overflow-y-auto p-3 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">
+          <DialogTitle className="font-display text-lg sm:text-xl">
             {mode === "add" ? "Add New Fixed Deposit" : "Edit Fixed Deposit"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 pt-1 sm:pt-2">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
             <div className="sm:col-span-2">
               <Label htmlFor="accountNo">Account Number</Label>
               <Input id="accountNo" value={form.accountNo} onChange={(e) => update("accountNo", e.target.value)} placeholder="e.g. 1046101000000055" required />
             </div>
-            <div>
+             <div className="col-span-2 sm:col-span-1">
               <Label htmlFor="bank">Bank / Institution</Label>
               <Select value={form.bank} onValueChange={(v) => update("bank", v)} required>
                 <SelectTrigger><SelectValue placeholder="Select bank" /></SelectTrigger>
@@ -275,7 +275,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 </SelectContent>
               </Select>
             </div>
-            <div>
+             <div className="col-span-2 sm:col-span-1">
               <Label htmlFor="type">Type</Label>
               <Select value={form.type} onValueChange={(v) => update("type", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -295,8 +295,8 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
             </div>
             <div className="sm:col-span-2">
               <Label>Period</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
+               <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+           <div>
                   <Input
                     id="years"
                     type="number"
@@ -393,7 +393,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
           </div>
           <div>
             <Label htmlFor="notes">Notes (optional)</Label>
-            <Textarea id="notes" value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Any additional notes..." rows={2} />
+             <Textarea id="notes" value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Any additional notes..." rows={2} className="min-h-16" />
           </div>
           <Button type="submit" className="w-full">
             {mode === "add" ? "Add Fixed Deposit" : "Save Changes"}

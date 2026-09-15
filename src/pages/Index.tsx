@@ -42,12 +42,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="rounded-lg bg-primary p-2 shrink-0">
-              <PiggyBank className="w-5 h-5 text-primary-foreground" />
+            <div className="rounded-md sm:rounded-lg bg-primary p-1.5 sm:p-2 shrink-0">
+              <PiggyBank className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
             </div>
-            <h1 className="text-lg sm:text-xl font-display truncate">FD Tracker</h1>
+            <h1 className="text-base sm:text-xl font-display truncate">FD Tracker</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <NotificationButton />
@@ -60,25 +60,25 @@ const Index = () => {
           </div>
         </div>
       </header>
-      <main className="container max-w-6xl mx-auto px-3 sm:px-4 py-5 sm:py-8 space-y-5 sm:space-y-8">
+      <main className="container max-w-6xl mx-auto px-2.5 sm:px-4 py-3 sm:py-8 space-y-3 sm:space-y-8">
         {loading ? (
           <div className="text-center py-20 text-muted-foreground">Loading deposits from database...</div>
         ) : (
           <>
             <SummaryCards deposits={filtered} />
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
+            <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3">
+              <div className="relative col-span-2 sm:flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by account, bank, type, notes..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
+                  className="h-9 pl-9 text-sm sm:h-10 sm:pl-10"
                 />
               </div>
               <Select value={bankFilter} onValueChange={setBankFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full h-9 text-xs sm:h-10 sm:w-[180px] sm:text-sm">
                   <SelectValue placeholder="All Banks" />
                 </SelectTrigger>
                 <SelectContent>
@@ -89,7 +89,7 @@ const Index = () => {
                 </SelectContent>
               </Select>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectTrigger className="w-full h-9 text-xs sm:h-10 sm:w-[160px] sm:text-sm">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
