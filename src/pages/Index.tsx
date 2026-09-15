@@ -5,18 +5,18 @@ import FDDialog from "@/components/FDDialog";
 import NotificationButton from "@/components/NotificationButton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { PiggyBank, Search, Database } from "lucide-react";
+import { PiggyBank, Search } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import InsuranceSection from "@/components/InsuranceSection";
+import LoadDefaultsDialog from "@/components/LoadDefaultsDialog";
 import { useDeposits } from "@/hooks/useDeposits";
-import { useInsurancePolicies } from "@/hooks/useDeposits";
-import InsurancePolicies from "@/components/InsurancePolicies";
 
 const Index = () => {
   const { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults } = useDeposits();
-  const { policies, loading: insuranceLoading, addPolicy, updatePolicy, deletePolicy } = useInsurancePolicies();
   const [search, setSearch] = useState("");
   const [bankFilter, setBankFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [section, setSection] = useState("deposits");
 
   const filtered = useMemo(() => {
     let result = deposits;
@@ -50,20 +50,19 @@ const Index = () => {
             <div className="rounded-md sm:rounded-lg bg-primary p-1.5 sm:p-2 shrink-0">
               <PiggyBank className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
             </div>
-            <h1 className="text-base sm:text-xl font-display truncate">FD Tracker</h1>
+            <h1 className="text-base sm:text-xl font-display truncate">Financial Hub</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <NotificationButton />
-            {deposits.length === 0 && !loading && (
-              <Button variant="outline" size="sm" onClick={seedDefaults} className="gap-2">
-                <Database className="w-4 h-4" /> <span className="hidden sm:inline">Load Defaults</span>
-              </Button>
-            )}
-            <FDDialog mode="add" onSubmit={handleAdd} existingAccountNos={existingAccountNos} />
+            {section === "deposits" && deposits.length === 0 && !loading && <LoadDefaultsDialog onConfirm={seedDefaults} />}
+            {section === "deposits" && <FDDialog mode="add" onSubmit={handleAdd} existingAccountNos={existingAccountNos} />}
           </div>
         </div>
       </header>
       <main className="container max-w-6xl mx-auto px-2.5 sm:px-4 py-3 sm:py-8 space-y-3 sm:space-y-8">
+        <Tabs value={section} onValueChange={setSection}>
+          <TabsList className="w-full sm:w-auto"><TabsTrigger value="deposits" className="flex-1">Fixed deposits</TabsTrigger><TabsTrigger value="insurance" className="flex-1">Insurance</TabsTrigger></TabsList>
+          <TabsContent value="deposits" className="space-y-4 sm:space-y-8">
         {loading ? (
           <div className="text-center py-20 text-muted-foreground">Loading deposits from database...</div>
         ) : (
@@ -104,9 +103,11 @@ const Index = () => {
             </div>
 
             <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} existingAccountNos={existingAccountNos} />
-            {!insuranceLoading && <InsurancePolicies policies={policies} onAdd={addPolicy} onUpdate={updatePolicy} onDelete={deletePolicy} />}
           </>
         )}
+          </TabsContent>
+          <TabsContent value="insurance"><InsuranceSection /></TabsContent>
+        </Tabs>
       </main>
     </div>
   );

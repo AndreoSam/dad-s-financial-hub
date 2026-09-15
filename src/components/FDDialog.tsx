@@ -1,22 +1,21 @@
-import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState, useEffect, useMemo, useRef } from "react";
+import RecordSummary from "./RecordSummary";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
-import { BANKS, type FixedDeposit } from "@/data/fixedDeposits";
+import { BANKS, formatCurrency, type FixedDeposit } from "@/data/fixedDeposits";
 import { toast } from "sonner";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { formatCurrency } from "@/data/fixedDeposits";
 
 interface FDDialogProps {
   mode: "add" | "edit";
   initial?: FixedDeposit;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onSubmit: (fd: FixedDeposit) => void;
+  onSubmit: (fd: FixedDeposit) => void | Promise<void>;
   trigger?: React.ReactNode;
   existingAccountNos?: string[];
 }
@@ -89,11 +88,14 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
   const setOpen = onOpenChange ?? setInternalOpen;
 
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [pending, setPending] = useState<FixedDeposit | null>(null);
+  const [review, setReview] = useState<FixedDeposit | null>(null);
+  const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
 
   // Load initial data on open (edit) or restore draft (add)
   useEffect(() => {
     if (!open) return;
+    setReview(null);
     if (initial) {
       const p = parsePeriod(initial.period);
       setForm({
@@ -232,26 +234,35 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       bank: form.bank,
       notes: form.notes.trim() || undefined,
     };
-    setPending(fd);
+    setReview(fd);
   };
 
-  const confirmSave = () => {
-    if (!pending) return;
-    onSubmit(pending);
-    if (mode === "add") {
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch {
-        /* ignore */
+  const confirmSave = async () => {
+    if (!review || saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
+    try {
+      await onSubmit(review);
+      if (mode === "add") {
+        try {
+          localStorage.removeItem(DRAFT_KEY);
+        } catch {
+          /* ignore */
+        }
+        setForm(emptyForm);
       }
-      setForm(emptyForm);
+      setOpen(false);
+      setReview(null);
+    } catch {
+      toast.error("Save failed. Your entries are preserved; please try again.");
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
     }
-    setPending(null);
-    setOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(value) => { if (!saving) setOpen(value); }}>
       {trigger !== undefined ? (
         <DialogTrigger asChild>{trigger}</DialogTrigger>
       ) : mode === "add" ? (
@@ -264,10 +275,25 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       <DialogContent className="sm:max-w-lg w-[calc(100vw-1rem)] max-h-[94vh] overflow-y-auto p-3 sm:p-6">
         <DialogHeader>
           <DialogTitle className="font-display text-lg sm:text-xl">
-            {mode === "add" ? "Add New Fixed Deposit" : "Edit Fixed Deposit"}
+            {review ? "Review Fixed Deposit" : mode === "add" ? "Add New Fixed Deposit" : "Edit Fixed Deposit"}
           </DialogTitle>
+          <DialogDescription>{review ? "Confirm the details below to save this deposit." : "Enter the deposit details, then review them before saving."}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 pt-1 sm:pt-2">
+        {review ? <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">Check these details before saving.</p>
+          <RecordSummary rows={[
+            ["Account number", review.accountNo], ["Bank", review.bank], ["Type", review.type],
+            ["Value date", review.valueDate], ["Maturity date", review.maturityDate], ["Period", review.period],
+            ["Deposit", formatCurrency(review.deposit)], ["Maturity amount", formatCurrency(review.maturityAmount)],
+            ["ROI", `${review.roi}%`], ["Interest entry", form.interestMode === "yearly" ? "Yearly interest" : "Deposit and maturity amount"],
+            ...(form.interestMode === "yearly" ? [["Yearly interest", formatCurrency(Number(form.yearlyInterest))] as const] : []),
+            ["Notes", review.notes ?? ""],
+          ]} />
+          <div className="flex gap-2">
+            <Button variant="outline" disabled={saving} onClick={() => setReview(null)}>Back to edit</Button>
+            <Button disabled={saving} onClick={confirmSave}>{saving ? "Saving…" : "Confirm and save"}</Button>
+          </div>
+        </div> : <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 pt-1 sm:pt-2">
           <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
             <div className="sm:col-span-2">
               <Label htmlFor="accountNo">Account Number</Label>
@@ -405,29 +431,10 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
              <Textarea id="notes" value={form.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Any additional notes..." rows={2} className="min-h-16" />
           </div>
           <Button type="submit" className="w-full">
-            {mode === "add" ? "Add Fixed Deposit" : "Save Changes"}
+            Review details
           </Button>
-        </form>
+        </form>}
       </DialogContent>
-      <AlertDialog open={!!pending} onOpenChange={(value) => !value && setPending(null)}>
-        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Review fixed deposit</AlertDialogTitle>
-            <AlertDialogDescription>Please check these details before {mode === "add" ? "adding" : "saving"}.</AlertDialogDescription>
-          </AlertDialogHeader>
-          {pending && <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-muted/50 p-3 text-sm">
-            <span className="text-muted-foreground">Account / Bank</span><span className="font-medium text-right break-all">{pending.accountNo} · {pending.bank}</span>
-            <span className="text-muted-foreground">Deposit</span><span className="font-medium text-right">{formatCurrency(pending.deposit)}</span>
-            <span className="text-muted-foreground">Maturity amount</span><span className="font-medium text-right">{formatCurrency(pending.maturityAmount)}</span>
-            <span className="text-muted-foreground">ROI / Period</span><span className="font-medium text-right">{pending.roi}% · {pending.period}</span>
-            <span className="text-muted-foreground">Dates</span><span className="font-medium text-right">{pending.valueDate} → {pending.maturityDate}</span>
-          </div>}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Go back</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSave}>{mode === "add" ? "Confirm & add" : "Confirm & save"}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Dialog>
   );
 };
