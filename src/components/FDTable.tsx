@@ -6,6 +6,7 @@ import { Trash2, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FDDialog from "./FDDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const getStatus = (maturityDate: string) => {
   const maturity = new Date(maturityDate);
@@ -59,6 +60,7 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
   const [sortKey, setSortKey] = useState<SortKey>("valueDate");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [editing, setEditing] = useState<FixedDeposit | null>(null);
+  const [deleting, setDeleting] = useState<FixedDeposit | null>(null);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -146,7 +148,7 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(fd)}>
                     <Pencil className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(fd.id)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleting(fd)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -249,7 +251,7 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(fd)} title="Edit">
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(fd.id)} title="Delete">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setDeleting(fd)} title="Delete">
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -274,6 +276,12 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
           }}
         />
       )}
+      <AlertDialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md">
+          <AlertDialogHeader><AlertDialogTitle>Delete this fixed deposit?</AlertDialogTitle><AlertDialogDescription>This will permanently remove {deleting?.accountNo ? `account ${deleting.accountNo}` : "this deposit"} from your records.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleting) onDelete(deleting.id); setDeleting(null); }}>Delete deposit</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
