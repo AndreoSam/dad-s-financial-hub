@@ -7,18 +7,23 @@ interface SummaryCardsProps {
 
 const SummaryCards = ({ deposits }: SummaryCardsProps) => {
   const totalDeposit = deposits.reduce((s, fd) => s + fd.deposit, 0);
-  const totalMaturity = deposits.reduce((s, fd) => s + fd.maturityAmount, 0);
-  const totalInterest = totalMaturity - totalDeposit;
+  const maturityPaidDeposits = deposits.filter((fd) => fd.interestPayout !== "yearly");
+  const totalMaturity = maturityPaidDeposits.reduce((s, fd) => s + fd.maturityAmount, 0);
+  const totalInterest = maturityPaidDeposits.reduce((s, fd) => s + fd.maturityAmount - fd.deposit, 0);
+  const yearlyInterest = deposits
+    .filter((fd) => fd.interestPayout === "yearly")
+    .reduce((s, fd) => s + (fd.yearlyInterest ?? 0), 0);
 
   const cards = [
     { label: "Total Deposited", value: formatCurrency(totalDeposit), icon: Wallet, accent: "bg-primary/10 text-primary" },
     { label: "Maturity Value", value: formatCurrency(totalMaturity), icon: IndianRupee, accent: "bg-accent/10 text-accent" },
-    { label: "Interest Earned", value: formatCurrency(totalInterest), icon: TrendingUp, accent: "bg-primary/10 text-primary" },
+    { label: "Interest at Maturity", value: formatCurrency(totalInterest), icon: TrendingUp, accent: "bg-primary/10 text-primary" },
+    { label: "Annual Interest", value: formatCurrency(yearlyInterest), icon: TrendingUp, accent: "bg-accent/10 text-accent" },
     { label: "Active FDs", value: String(deposits.length), icon: PiggyBank, accent: "bg-accent/10 text-accent" },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-5">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-5">
       {cards.map((card) => (
         <div key={card.label} className="rounded-md sm:rounded-xl bg-card p-3 sm:p-5 border border-border shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-shadow min-w-0">
           <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-3 min-w-0">

@@ -17,6 +17,8 @@ const getStatus = (maturityDate: string) => {
   return { label: "Active", className: "bg-muted text-muted-foreground border-border" };
 };
 
+const isYearlyPaid = (fd: FixedDeposit) => fd.interestPayout === "yearly";
+
 const BANK_COLORS: Record<string, string> = {
   "South Indian Bank": "bg-primary/10 text-primary border-primary/20",
   "SBI": "bg-blue-100 text-blue-700 border-blue-200",
@@ -140,6 +142,7 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
                      <Badge variant="outline" className={`px-1.5 py-0 text-[10px] ${fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}`}>
                       {fd.type}
                     </Badge>
+                     {isYearlyPaid(fd) && <Badge variant="outline" className="px-1.5 py-0 text-[10px] bg-primary/10 text-primary border-primary/20">Paid yearly</Badge>}
                      <Badge variant="outline" className={`${status.className} px-1.5 py-0 text-[10px]`}>{status.label}</Badge>
                   </div>
                    <p className="font-mono text-[11px] text-muted-foreground mt-1 break-all">A/C {fd.accountNo}</p>
@@ -159,8 +162,8 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
                    <p className="font-medium leading-tight">{formatCurrency(fd.deposit)}</p>
                 </div>
                 <div>
-                   <p className="text-[9px] uppercase text-muted-foreground">Maturity</p>
-                   <p className="font-medium leading-tight">{formatCurrency(fd.maturityAmount)}</p>
+                    <p className="text-[9px] uppercase text-muted-foreground">{isYearlyPaid(fd) ? "Principal at maturity" : "Maturity"}</p>
+                    <p className="font-medium leading-tight">{formatCurrency(fd.maturityAmount)}</p>
                 </div>
                 <div>
                    <p className="text-[9px] uppercase text-muted-foreground">Value Date</p>
@@ -238,10 +241,11 @@ const FDTable = ({ deposits, onDelete, onUpdate, existingAccountNos = [] }: FDTa
                   <td className="px-2 py-3 font-medium text-xs">{formatCurrency(fd.deposit)}</td>
                   <td className="px-2 py-3 font-medium text-xs">{formatCurrency(fd.maturityAmount)}</td>
                   <td className="px-2 py-3 text-xs">{fd.roi}%</td>
-                  <td className="px-2 py-3">
+                   <td className="px-2 py-3">
                     <Badge variant="outline" className={`text-[10px] ${fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}`}>
                       {fd.type}
                     </Badge>
+                     {isYearlyPaid(fd) && <span className="block text-[10px] text-primary mt-1">Paid yearly</span>}
                   </td>
                   <td className="px-2 py-3">
                     <Badge variant="outline" className={`${status.className} text-[10px] whitespace-nowrap`}>{status.label}</Badge>
