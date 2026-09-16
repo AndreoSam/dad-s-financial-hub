@@ -18,7 +18,7 @@ const SummaryCards = ({ deposits }: SummaryCardsProps) => {
     { label: "Total Deposited", value: formatCurrency(totalDeposit), icon: Wallet, accent: "bg-primary/10 text-primary" },
     { label: "Maturity Value", value: formatCurrency(totalMaturity), icon: IndianRupee, accent: "bg-accent/10 text-accent" },
     { label: "Interest at Maturity", value: formatCurrency(totalInterest), icon: TrendingUp, accent: "bg-primary/10 text-primary" },
-    { label: "Paid Yearly", value: formatCurrency(yearlyInterest), icon: TrendingUp, accent: "bg-accent/10 text-accent" },
+    { label: "Annual Interest", value: formatCurrency(yearlyInterest), icon: TrendingUp, accent: "bg-accent/10 text-accent" },
     { label: "Active FDs", value: String(deposits.length), icon: PiggyBank, accent: "bg-accent/10 text-accent" },
   ];
 

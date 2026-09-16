@@ -304,7 +304,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
           <RecordSummary rows={[
             ["Account number", review.accountNo], ["Bank", review.bank], ["Type", review.type],
             ["Value date", review.valueDate], ["Maturity date", review.maturityDate], ["Period", review.period],
-            ["Deposit", formatCurrency(review.deposit)], ["Maturity amount", formatCurrency(review.maturityAmount)],
+             ["Deposit", formatCurrency(review.deposit)], [review.interestPayout === "yearly" ? "Principal at maturity" : "Maturity amount", formatCurrency(review.maturityAmount)],
              ["ROI", `${review.roi}%`], ["Interest payout", review.interestPayout === "yearly" ? "Paid yearly" : "At maturity"],
              ["Interest entry", form.interestPayout === "yearly" || form.interestMode === "yearly" ? "Yearly interest" : "Deposit and maturity amount"],
              ...(form.interestPayout === "yearly" || form.interestMode === "yearly" ? [["Yearly interest", formatCurrency(Number(form.yearlyInterest))] as const] : []),
