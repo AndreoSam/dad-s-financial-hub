@@ -7,6 +7,8 @@ export interface FixedDeposit {
   deposit: number;
   maturityAmount: number;
   roi: number;
+  interestPayout?: "maturity" | "yearly";
+  yearlyInterest?: number;
   type: "Regular" | "Personal";
   bank: string;
   notes?: string;
