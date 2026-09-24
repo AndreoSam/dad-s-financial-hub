@@ -24,8 +24,8 @@ const iconFor = (type: ActivityLog["type"]) => {
   return PlusCircle;
 };
 
-const ActivityNotifications = () => {
-  const { activities, loading, revertingId, revertActivity } = useActivityLog(true);
+const ActivityNotifications = ({ testingMode = false }: { testingMode?: boolean }) => {
+  const { activities, loading, revertingId, revertActivity } = useActivityLog(testingMode);
   const [selected, setSelected] = useState<ActivityLog | null>(null);
 
   const requestRevert = (activity: ActivityLog) => setSelected(activity);
