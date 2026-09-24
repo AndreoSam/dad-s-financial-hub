@@ -31,7 +31,7 @@ export function useInsurance(testingMode = false) {
     toast.success("Insurance policy saved.");
   };
   const remove = async (id: string) => {
-    await deleteDoc(doc(db, COLLECTION, id));
+    await deleteDoc(doc(db, insuranceCollection, id));
     toast.success("Insurance policy removed.");
   };
   return { policies, loading, error, save, remove };
