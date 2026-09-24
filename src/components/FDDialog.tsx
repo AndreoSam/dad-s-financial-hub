@@ -216,7 +216,10 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
   const update = (key: keyof FormState, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const startRenewal = () => {
-    if (!initial) return;
+    if (!initial || new Date(initial.maturityDate) > new Date()) {
+      toast.error("This FD can only be renewed after it has matured.");
+      return;
+    }
     const renewedPrincipal = initial.interestPayout === "yearly" ? initial.deposit : initial.maturityAmount;
     setRenewalMode(true);
     setForm((current) => ({
@@ -361,7 +364,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
               {renewalMode ? (
                 <Button type="button" variant="outline" size="sm" onClick={cancelRenewal}>Cancel renewal</Button>
               ) : (
-                <Button type="button" variant="outline" size="sm" onClick={startRenewal}>Renew FD</Button>
+                <Button type="button" variant="outline" size="sm" onClick={startRenewal} disabled={new Date(initial.maturityDate) > new Date()} title={new Date(initial.maturityDate) > new Date() ? "Renewal becomes available after maturity" : "Renew this matured FD"}>Renew FD</Button>
               )}
             </div>
           )}
@@ -401,7 +404,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="renewed">Renewed</SelectItem>
+                  <SelectItem value="renewed" disabled={!renewalMode}>Renewed</SelectItem>
                 </SelectContent>
               </Select>
             </div>

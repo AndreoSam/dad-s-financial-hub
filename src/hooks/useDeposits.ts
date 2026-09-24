@@ -9,6 +9,8 @@ import {
   query,
   orderBy,
   writeBatch,
+  runTransaction,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { verifyRecaptcha } from "@/lib/recaptcha";
@@ -17,6 +19,13 @@ import { toast } from "sonner";
 
 const COLLECTION = "fixedDeposits";
 const INSURANCE_COLLECTION = "insurancePolicies";
+const BANK_ACCOUNTS_COLLECTION = "bankAccounts";
+const INDIAN_BANK_DOC = "indian-bank";
+const INITIAL_INDIAN_BANK_BALANCE = 26191.9;
+const MONTHLY_PF = 3764;
+
+const monthIndex = (value: string) => { const [year, month] = value.split("-").map(Number); return year * 12 + (month - 1); };
+const currentMonth = () => { const now = new Date(); return String(now.getFullYear()) + "-" + String(now.getMonth() + 1).padStart(2, "0"); };
 
 const clean = <T extends Record<string, unknown>>(data: T) =>
   Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
@@ -57,11 +66,37 @@ export const useDeposits = () => {
     try {
       await protect("add_deposit");
       const { id, ...data } = fd as FixedDeposit;
-      await addDoc(collection(db, COLLECTION), clean(data));
-      toast.success("Fixed deposit added successfully!");
+      const isNewSouthIndianBankFd = data.bank === "South Indian Bank" && data.recordType !== "renewed";
+      if (!isNewSouthIndianBankFd) {
+        await addDoc(collection(db, COLLECTION), clean(data));
+        toast.success("Fixed deposit added successfully!");
+        return;
+      }
+      const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
+      await runTransaction(db, async (transaction) => {
+        const balanceSnap = await transaction.get(balanceRef);
+        const nowMonth = currentMonth();
+        let balance = INITIAL_INDIAN_BANK_BALANCE;
+        let lastPfMonth = nowMonth;
+        if (balanceSnap.exists()) {
+          const account = balanceSnap.data();
+          balance = Number(account.balance ?? INITIAL_INDIAN_BANK_BALANCE);
+          lastPfMonth = String(account.lastPfCreditMonth ?? nowMonth);
+          const missedMonths = Math.max(0, monthIndex(nowMonth) - monthIndex(lastPfMonth));
+          if (missedMonths > 0) {
+            balance += missedMonths * MONTHLY_PF;
+            lastPfMonth = nowMonth;
+          }
+        }
+        const depositAmount = Number(data.deposit);
+        if (depositAmount > balance) throw new Error("INSUFFICIENT_INDIAN_BANK_BALANCE:" + balance);
+        transaction.set(balanceRef, { balance: Number((balance - depositAmount).toFixed(2)), monthlyPf: MONTHLY_PF, lastPfCreditMonth: lastPfMonth, updatedAt: new Date().toISOString() }, { merge: true });
+        transaction.set(doc(collection(db, COLLECTION)), clean(data));
+      });
+      toast.success("Fixed deposit added and Indian Bank balance updated.");
     } catch (error) {
       console.error("Add error:", error);
-      if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to add deposit.");
+      if (error instanceof Error && error.message.startsWith("INSUFFICIENT_INDIAN_BANK_BALANCE:")) { toast.error(`Insufficient Indian Bank balance. Available: ₹${Number(error.message.split(":")[1]).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`); } else if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to add deposit.");
       throw error;
     }
   };
@@ -109,6 +144,36 @@ export const useDeposits = () => {
   };
 
   return { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults };
+};
+
+export const useIndianBankBalance = () => {
+  const [balance, setBalance] = useState(INITIAL_INDIAN_BANK_BALANCE);
+  const [monthlyPf, setMonthlyPf] = useState(MONTHLY_PF);
+  useEffect(() => {
+    const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
+    const unsubscribe = onSnapshot(balanceRef, async (snapshot) => {
+      if (!snapshot.exists()) {
+        try {
+          await setDoc(balanceRef, { balance: INITIAL_INDIAN_BANK_BALANCE, monthlyPf: MONTHLY_PF, lastPfCreditMonth: currentMonth(), updatedAt: new Date().toISOString() }, { merge: true });
+        } catch (error) { console.error("Indian Bank balance initialization error:", error); }
+        return;
+      }
+      const data = snapshot.data();
+      const nowMonth = currentMonth();
+      const lastPfMonth = String(data.lastPfCreditMonth ?? nowMonth);
+      const missedMonths = Math.max(0, monthIndex(nowMonth) - monthIndex(lastPfMonth));
+      const storedBalance = Number(data.balance ?? INITIAL_INDIAN_BANK_BALANCE);
+      const pf = Number(data.monthlyPf ?? MONTHLY_PF);
+      const updatedBalance = storedBalance + missedMonths * pf;
+      if (missedMonths > 0) {
+        try { await setDoc(balanceRef, { balance: Number(updatedBalance.toFixed(2)), monthlyPf: pf, lastPfCreditMonth: nowMonth, updatedAt: new Date().toISOString() }, { merge: true }); } catch (error) { console.error("PF credit update error:", error); }
+      }
+      setBalance(Number(updatedBalance.toFixed(2)));
+      setMonthlyPf(pf);
+    }, (error) => console.error("Indian Bank balance error:", error));
+    return unsubscribe;
+  }, []);
+  return { balance, monthlyPf };
 };
 
 export const useInsurancePolicies = () => {

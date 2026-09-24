@@ -9,10 +9,11 @@ import { PiggyBank, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import InsuranceSection from "@/components/InsuranceSection";
 import LoadDefaultsDialog from "@/components/LoadDefaultsDialog";
-import { useDeposits } from "@/hooks/useDeposits";
+import { useDeposits, useIndianBankBalance } from "@/hooks/useDeposits";
 
 const Index = () => {
   const { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults } = useDeposits();
+  const { balance: indianBankBalance, monthlyPf } = useIndianBankBalance();
   const [search, setSearch] = useState("");
   const [bankFilter, setBankFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -68,7 +69,7 @@ const Index = () => {
           <div className="text-center py-20 text-muted-foreground">Loading deposits from database...</div>
         ) : (
           <>
-            <SummaryCards deposits={filtered} />
+            <SummaryCards deposits={filtered} indianBankBalance={indianBankBalance} monthlyPf={monthlyPf} />
 
             <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3">
               <div className="relative col-span-2 sm:flex-1">

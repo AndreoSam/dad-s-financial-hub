@@ -1,11 +1,13 @@
-import { IndianRupee, TrendingUp, Wallet, PiggyBank } from "lucide-react";
+import { IndianRupee, TrendingUp, Wallet, PiggyBank, Landmark } from "lucide-react";
 import { formatCurrency, type FixedDeposit } from "@/data/fixedDeposits";
 
 interface SummaryCardsProps {
   deposits: FixedDeposit[];
+  indianBankBalance: number;
+  monthlyPf: number;
 }
 
-const SummaryCards = ({ deposits }: SummaryCardsProps) => {
+const SummaryCards = ({ deposits, indianBankBalance, monthlyPf }: SummaryCardsProps) => {
   const totalDeposit = deposits.reduce((s, fd) => s + fd.deposit, 0);
   const maturityPaidDeposits = deposits.filter((fd) => fd.interestPayout !== "yearly");
   const totalMaturity = maturityPaidDeposits.reduce((s, fd) => s + fd.maturityAmount, 0);
@@ -20,10 +22,11 @@ const SummaryCards = ({ deposits }: SummaryCardsProps) => {
     { label: "Interest at Maturity", value: formatCurrency(totalInterest), icon: TrendingUp, accent: "bg-primary/10 text-primary" },
     { label: "Annual Interest", value: formatCurrency(yearlyInterest), icon: TrendingUp, accent: "bg-accent/10 text-accent" },
     { label: "Active FDs", value: String(deposits.length), icon: PiggyBank, accent: "bg-accent/10 text-accent" },
+    { label: "Indian Bank Balance", value: formatCurrency(indianBankBalance), icon: Landmark, accent: "bg-primary/10 text-primary", subtitle: `PF +${formatCurrency(monthlyPf)} / month` },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-5">
+    <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-5">
       {cards.map((card) => (
         <div key={card.label} className="rounded-md sm:rounded-xl bg-card p-3 sm:p-5 border border-border shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-shadow min-w-0">
           <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-3 min-w-0">
@@ -33,6 +36,7 @@ const SummaryCards = ({ deposits }: SummaryCardsProps) => {
             <span className="text-[11px] leading-tight sm:text-sm text-muted-foreground font-medium">{card.label}</span>
           </div>
           <p className="text-base sm:text-2xl font-bold font-display break-words">{card.value}</p>
+          {"subtitle" in card && card.subtitle && <p className="text-[9px] sm:text-xs text-muted-foreground mt-1">{card.subtitle}</p>}
         </div>
       ))}
     </div>
