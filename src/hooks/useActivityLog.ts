@@ -51,13 +51,13 @@ export const useActivityLog = () => {
       const targetRef = doc(db, FD_COLLECTION, activity.targetId);
 
       if (activity.type === "delete" && activity.snapshot) {
-        await setDoc(targetRef, { ...activity.snapshot, id: undefined });
+        const { id: _ignoredId, ...snapshotData } = activity.snapshot;\n        await setDoc(targetRef, snapshotData);
         toast.success("Deleted FD restored.");
       } else if (activity.type === "add" || activity.type === "renew") {
         await deleteDoc(targetRef);
         toast.success(activity.type === "renew" ? "Renewal reverted." : "Added FD removed.");
       } else if (activity.type === "update" && activity.before) {
-        const { id, ...beforeData } = activity.before;
+        const { id: _ignoredId, ...beforeData } = activity.before;
         await setDoc(targetRef, beforeData);
         toast.success("FD changes reverted.");
       } else {
