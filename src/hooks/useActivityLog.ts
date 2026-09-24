@@ -15,20 +15,24 @@ import { db } from "@/lib/firebase";
 import { verifyRecaptcha } from "@/lib/recaptcha";
 import { toast } from "sonner";
 import type { ActivityLog } from "./useDeposits";
+import { TEST_COLLECTIONS } from "./useTestingData";
 
 const ACTIVITY_COLLECTION = "activityLogs";
 const FD_COLLECTION = "fixedDeposits";
 const BANK_ACCOUNTS_COLLECTION = "bankAccounts";
 const INDIAN_BANK_DOC = "indian-bank";
 
-export const useActivityLog = () => {
+export const useActivityLog = (testingMode = false) => {
+  const activityCollection = testingMode ? TEST_COLLECTIONS.activities : ACTIVITY_COLLECTION;
+  const fdCollection = testingMode ? TEST_COLLECTIONS.deposits : FD_COLLECTION;
+  const bankAccountsCollection = testingMode ? TEST_COLLECTIONS.bankAccounts : BANK_ACCOUNTS_COLLECTION;
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [revertingId, setRevertingId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(
-      collection(db, ACTIVITY_COLLECTION),
+      collection(db, activityCollection),
       orderBy("createdAt", "desc"),
       limit(10)
     );
@@ -51,7 +55,7 @@ export const useActivityLog = () => {
     setRevertingId(activity.id);
     try {
       await verifyRecaptcha("revert_activity");
-      const targetRef = doc(db, FD_COLLECTION, activity.targetId);
+      const targetRef = doc(db, fdCollection, activity.targetId);
 
       if (activity.type === "delete" && activity.snapshot) {
         const { id: _ignoredId, ...snapshotData } = activity.snapshot;
@@ -59,7 +63,7 @@ export const useActivityLog = () => {
         toast.success("Deleted FD restored.");
       } else if (activity.type === "add" || activity.type === "renew") {
         if (activity.type === "add" && activity.bankBalanceDelta && activity.snapshot?.bank === "South Indian Bank" && activity.snapshot.recordType !== "renewed") {
-          const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
+          const balanceRef = doc(db, bankAccountsCollection, INDIAN_BANK_DOC);
           await runTransaction(db, async (transaction) => {
             const fdSnap = await transaction.get(targetRef);
             if (!fdSnap.exists()) throw new Error("The FD has already been removed, so this notification cannot be reverted safely.");
@@ -84,7 +88,7 @@ export const useActivityLog = () => {
         throw new Error("This notification cannot be reverted because its original data is unavailable.");
       }
 
-      await updateDoc(doc(db, ACTIVITY_COLLECTION, activity.id), {
+      await updateDoc(doc(db, activityCollection, activity.id), {
         revertedAt: new Date().toISOString(),
       });
     } catch (error) {
