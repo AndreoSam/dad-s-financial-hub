@@ -12,6 +12,7 @@ import LoadDefaultsDialog from "@/components/LoadDefaultsDialog";
 import { useDeposits, useIndianBankBalance } from "@/hooks/useDeposits";
 import ActivityNotifications from "@/components/ActivityNotifications";
 import { Link } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
 
 interface IndexProps { testingMode?: boolean; }
 
@@ -126,7 +127,7 @@ const Index = ({ testingMode = false }: IndexProps) => {
   );
 };
 
-const ButtonLink = ({ to, icon: Icon, label }: { to: string; icon: typeof TestTube2; label: string }) => (
+const ButtonLink = ({ to, icon: Icon, label }: { to: string; icon: LucideIcon; label: string }) => (
   <Link to={to} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-muted transition-colors">
     <Icon className="w-4 h-4" /> <span className="hidden sm:inline">{label}</span>
   </Link>
