@@ -99,8 +99,9 @@ const depositToForm = (deposit: FixedDeposit): FormState => {
     deposit: String(deposit.deposit),
     maturityAmount: String(deposit.maturityAmount),
     roi: String(deposit.roi),
-    interestPayout: deposit.interestPayout ?? "maturity",
+    interestPayout: deposit.interestPayout === "yearly" || deposit.yearlyInterest != null ? "yearly" : "maturity",
     yearlyInterest: deposit.yearlyInterest ? String(deposit.yearlyInterest) : "",
+    interestMode: deposit.interestPayout === "yearly" || deposit.yearlyInterest != null ? "yearly" : "roi",
     type: deposit.type,
     bank: deposit.bank,
     nominee: deposit.nominee ?? "",
@@ -168,7 +169,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
 
   // Yearly-paid FDs return the principal at maturity and pay the interest separately.
   useEffect(() => {
-    if (form.interestPayout === "yearly") {
+    if (form.interestMode === "yearly") {
       const deposit = Number(form.deposit);
       const yearly = Number(form.yearlyInterest);
       if (deposit > 0 && yearly > 0) {
@@ -201,7 +202,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
 
   // When in "roi" mode, auto-calculate ROI from deposit + maturity amount + period
   useEffect(() => {
-    if (form.interestPayout === "yearly" || form.interestMode !== "roi") return;
+    if (form.interestMode !== "roi") return;
     const deposit = Number(form.deposit);
     const maturity = Number(form.maturityAmount);
     const t = periodInYears(form.years, form.months, form.days);
@@ -253,7 +254,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       return toast.error("Maturity date must be after value date.");
     const period = buildPeriod(form.years, form.months, form.days);
     if (!period) return toast.error("Period must be at least 1 day.");
-    if (form.interestPayout === "yearly" || form.interestMode === "yearly") {
+    if (form.interestMode === "yearly") {
       const yearly = Number(form.yearlyInterest);
       if (!form.yearlyInterest || isNaN(yearly) || yearly <= 0)
         return toast.error("Yearly interest must be greater than 0.");
@@ -279,8 +280,8 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       deposit,
       maturityAmount,
       roi,
-      interestPayout: form.interestPayout,
-      yearlyInterest: form.interestPayout === "yearly" ? Number(form.yearlyInterest) : undefined,
+      interestPayout: form.interestMode === "yearly" ? "yearly" : "maturity",
+      yearlyInterest: form.interestMode === "yearly" ? Number(form.yearlyInterest) : undefined,
       type: form.type,
       bank: form.bank,
       nominee: form.nominee.trim() || undefined,
@@ -342,9 +343,9 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
              ["Record", review.recordType === "renewed" ? "Renewed" : "New"], ["Nominee", review.nominee ?? "—"],
             ["Value date", review.valueDate], ["Maturity date", review.maturityDate], ["Period", review.period],
              ["Deposit", formatCurrency(review.deposit)], [review.interestPayout === "yearly" ? "Principal at maturity" : "Maturity amount", formatCurrency(review.maturityAmount)],
-             ["ROI", `${review.roi}%`], ["Interest payout", review.interestPayout === "yearly" ? "Paid yearly" : "At maturity"],
-             ["Interest entry", form.interestPayout === "yearly" || form.interestMode === "yearly" ? "Yearly interest" : "Deposit and maturity amount"],
-             ...(form.interestPayout === "yearly" || form.interestMode === "yearly" ? [["Yearly interest", formatCurrency(Number(form.yearlyInterest))] as const] : []),
+              ["ROI", `${review.roi}%`], ["Interest payout", review.interestPayout === "yearly" ? "Paid yearly" : "At maturity"],
+              ["Interest entry", form.interestMode === "yearly" ? "Yearly interest" : "Deposit and maturity amount"],
+              ...(form.interestMode === "yearly" ? [["Yearly interest", formatCurrency(Number(form.yearlyInterest))] as const] : []),
             ["Notes", review.notes ?? ""],
           ]} />
           </div>
@@ -451,20 +452,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 Maturity date auto-calculates from value date + period.
               </p>
             </div>
-            <div className="col-span-2">
-               <Label>Interest payout</Label>
-               <Select value={form.interestPayout} onValueChange={(v) => update("interestPayout", v)}>
-                 <SelectTrigger><SelectValue /></SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="maturity">Interest paid at maturity</SelectItem>
-                   <SelectItem value="yearly">Interest paid every year</SelectItem>
-                 </SelectContent>
-               </Select>
-               {form.interestPayout === "yearly" && (
-                 <p className="text-xs text-muted-foreground mt-1">Only the deposit returns on the maturity date; interest is received yearly.</p>
-               )}
-             </div>
-             {form.interestPayout === "yearly" ? (
+              {form.interestMode === "yearly" ? (
                <>
                  <div>
                    <Label htmlFor="deposit">Deposit Amount (₹)</Label>
@@ -483,13 +471,14 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
              ) : <>
              <div className="col-span-2">
               <Label>Interest Calculation</Label>
-              <Select value={form.interestMode} onValueChange={(v) => update("interestMode", v)}>
+               <Select value={form.interestMode} onValueChange={(v) => setForm((current) => ({ ...current, interestMode: v as "roi" | "yearly", interestPayout: v === "yearly" ? "yearly" : "maturity" }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="roi">Enter ROI (%)</SelectItem>
-                  <SelectItem value="yearly">Enter Yearly Interest (₹/year)</SelectItem>
+                  <SelectItem value="yearly">Enter Yearly Interest (paid yearly)</SelectItem>
                 </SelectContent>
-              </Select>
+               </Select>
+               <p className="text-xs text-muted-foreground mt-1">Yearly interest is paid annually and excluded from maturity totals.</p>
             </div>
             <div>
               <Label htmlFor="deposit">Deposit Amount (₹)</Label>
