@@ -102,7 +102,7 @@ const Index = () => {
               </Select>
             </div>
 
-            <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} existingAccountNos={existingAccountNos} />
+            <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} onRenew={handleAdd} existingAccountNos={existingAccountNos} />
           </>
         )}
           </TabsContent>
