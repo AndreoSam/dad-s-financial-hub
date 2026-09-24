@@ -139,7 +139,7 @@ export const useDeposits = (testingMode = false) => {
         transaction.set(balanceRef, { balance: Number((balance - depositAmount).toFixed(2)), monthlyPf: MONTHLY_PF, lastPfCreditMonth: lastPfMonth, updatedAt: new Date().toISOString() }, { merge: true });
         transaction.set(createdRef, clean(data));
       });
-      await recordActivity({
+      await recordActivity(activityCollection, {
         type: "add",
         title: "FD added",
         description: `Added South Indian Bank FD ${data.accountNo} and deducted ${formatActivityCurrency(data.deposit)} from Indian Bank balance.`,
@@ -163,7 +163,7 @@ export const useDeposits = (testingMode = false) => {
       const before = existing.exists() ? ({ id: existing.id, ...existing.data() } as FixedDeposit) : undefined;
       const { id, ...data } = fd;
       await updateDoc(doc(db, depositsCollection, id), clean({ ...data, notes: data.notes ?? "" }));
-      await recordActivity({
+      await recordActivity(activityCollection, {
         type: "update",
         title: "FD updated",
         description: `Updated FD ${fd.accountNo}.`,
@@ -187,7 +187,7 @@ export const useDeposits = (testingMode = false) => {
       if (!fdSnap.exists()) throw new Error("FD_NOT_FOUND");
       const fd = { id: fdSnap.id, ...fdSnap.data() } as FixedDeposit;
       await deleteDoc(doc(db, depositsCollection, id));
-      await recordActivity({
+      await recordActivity(activityCollection, {
         type: "delete",
         title: "FD deleted",
         description: `Deleted ${fd.bank} FD ${fd.accountNo}.`,
