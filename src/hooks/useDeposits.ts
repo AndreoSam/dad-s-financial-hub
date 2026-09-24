@@ -51,10 +51,10 @@ export interface ActivityLog {
   bankBalanceDelta?: number;
 }
 
-const recordActivity = async (entry: Omit<ActivityLog, "id">) => {
+const recordActivity = async (collectionName: string, entry: Omit<ActivityLog, "id">) => {
   try {
     const payload = JSON.parse(JSON.stringify(entry));
-    await addDoc(collection(db, activityCollection), payload);
+    await addDoc(collection(db, collectionName), payload);
   } catch (error) {
     console.error("Activity log write error:", error);
     toast.warning("The FD change was saved, but its notification could not be recorded.");
@@ -102,11 +102,11 @@ export const useDeposits = (testingMode = false) => {
       const { id, ...data } = fd as FixedDeposit;
       const isRenewal = data.recordType === "renewed";
       const isNewSouthIndianBankFd = data.bank === "South Indian Bank" && !isRenewal;
-      const createdRef = doc(collection(db, COLLECTION));
+      const createdRef = doc(collection(db, depositsCollection));
 
       if (!isNewSouthIndianBankFd) {
         await setDoc(createdRef, clean(data));
-        await recordActivity({
+        await recordActivity(activityCollection, {
           type: isRenewal ? "renew" : "add",
           title: isRenewal ? "FD renewed" : "FD added",
           description: isRenewal ? `Renewed FD ${data.accountNo} was created.` : `Added ${data.bank} FD ${data.accountNo}.`,
@@ -159,7 +159,7 @@ export const useDeposits = (testingMode = false) => {
   const handleUpdate = async (fd: FixedDeposit) => {
     try {
       await protect("update_deposit");
-      const existing = await getDoc(doc(db, COLLECTION, fd.id));
+      const existing = await getDoc(doc(db, depositsCollection, fd.id));
       const before = existing.exists() ? ({ id: existing.id, ...existing.data() } as FixedDeposit) : undefined;
       const { id, ...data } = fd;
       await updateDoc(doc(db, depositsCollection, id), clean({ ...data, notes: data.notes ?? "" }));
@@ -183,10 +183,10 @@ export const useDeposits = (testingMode = false) => {
   const handleDelete = async (id: string) => {
     try {
       await protect("delete_deposit");
-      const fdSnap = await getDoc(doc(db, COLLECTION, id));
+      const fdSnap = await getDoc(doc(db, depositsCollection, id));
       if (!fdSnap.exists()) throw new Error("FD_NOT_FOUND");
       const fd = { id: fdSnap.id, ...fdSnap.data() } as FixedDeposit;
-      await deleteDoc(doc(db, COLLECTION, id));
+      await deleteDoc(doc(db, depositsCollection, id));
       await recordActivity({
         type: "delete",
         title: "FD deleted",
