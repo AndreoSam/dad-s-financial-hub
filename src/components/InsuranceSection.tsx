@@ -8,8 +8,8 @@ import PolicyDialog from "./PolicyDialog";
 import DeleteConfirmation from "./DeleteConfirmation";
 import RecordSummary from "./RecordSummary";
 
-export default function InsuranceSection() {
-  const { policies, loading, error, save, remove } = useInsurance();
+export default function InsuranceSection({ testingMode = false }: { testingMode?: boolean }) {
+  const { policies, loading, error, save, remove } = useInsurance(testingMode);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<InsurancePolicy | "new" | null>(null);
   const [deleting, setDeleting] = useState<InsurancePolicy | null>(null);
