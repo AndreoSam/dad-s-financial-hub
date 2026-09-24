@@ -11,6 +11,9 @@ export interface FixedDeposit {
   yearlyInterest?: number;
   type: "Regular" | "Personal";
   bank: string;
+  nominee?: string;
+  recordType?: "new" | "renewed";
+  renewalOf?: string;
   notes?: string;
 }
 

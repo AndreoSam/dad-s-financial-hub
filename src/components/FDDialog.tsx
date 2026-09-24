@@ -16,6 +16,7 @@ interface FDDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onSubmit: (fd: FixedDeposit) => void | Promise<void>;
+  onRenew?: (fd: FixedDeposit) => void | Promise<void>;
   trigger?: React.ReactNode;
   existingAccountNos?: string[];
 }
@@ -35,6 +36,8 @@ const emptyForm = {
   yearlyInterest: "",
   type: "Regular" as "Regular" | "Personal",
   bank: "",
+  nominee: "",
+  recordType: "new" as "new" | "renewed",
   notes: "",
 };
 
@@ -83,7 +86,31 @@ const computeMaturityDate = (valueDate: string, years: string, months: string, d
 
 const DRAFT_KEY = "fd-dialog-draft-add";
 
-const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit, trigger, existingAccountNos = [] }: FDDialogProps) => {
+const depositToForm = (deposit: FixedDeposit): FormState => {
+  const p = parsePeriod(deposit.period);
+  return {
+    ...emptyForm,
+    accountNo: deposit.accountNo,
+    valueDate: deposit.valueDate,
+    maturityDate: deposit.maturityDate,
+    years: p.years,
+    months: p.months,
+    days: p.days,
+    deposit: String(deposit.deposit),
+    maturityAmount: String(deposit.maturityAmount),
+    roi: String(deposit.roi),
+    interestPayout: deposit.interestPayout === "yearly" || deposit.yearlyInterest != null ? "yearly" : "maturity",
+    yearlyInterest: deposit.yearlyInterest ? String(deposit.yearlyInterest) : "",
+    interestMode: deposit.interestPayout === "yearly" || deposit.yearlyInterest != null ? "yearly" : "roi",
+    type: deposit.type,
+    bank: deposit.bank,
+    nominee: deposit.nominee ?? "",
+    recordType: deposit.recordType ?? "new",
+    notes: deposit.notes ?? "",
+  };
+};
+
+const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit, onRenew, trigger, existingAccountNos = [] }: FDDialogProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
@@ -91,31 +118,16 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
   const [form, setForm] = useState<FormState>(emptyForm);
   const [review, setReview] = useState<FixedDeposit | null>(null);
   const [saving, setSaving] = useState(false);
+  const [renewalMode, setRenewalMode] = useState(false);
   const saveLock = useRef(false);
 
   // Load initial data on open (edit) or restore draft (add)
   useEffect(() => {
     if (!open) return;
     setReview(null);
+    setRenewalMode(false);
     if (initial) {
-      const p = parsePeriod(initial.period);
-      setForm({
-        accountNo: initial.accountNo,
-        valueDate: initial.valueDate,
-        maturityDate: initial.maturityDate,
-        years: p.years,
-        months: p.months,
-        days: p.days,
-        deposit: String(initial.deposit),
-        maturityAmount: String(initial.maturityAmount),
-        roi: String(initial.roi),
-        interestMode: "roi",
-        interestPayout: initial.interestPayout ?? "maturity",
-        yearlyInterest: initial.yearlyInterest ? String(initial.yearlyInterest) : "",
-        type: initial.type,
-        bank: initial.bank,
-        notes: initial.notes ?? "",
-      });
+      setForm(depositToForm(initial));
     } else if (mode === "add") {
       try {
         const draft = localStorage.getItem(DRAFT_KEY);
@@ -157,7 +169,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
 
   // Yearly-paid FDs return the principal at maturity and pay the interest separately.
   useEffect(() => {
-    if (form.interestPayout === "yearly") {
+    if (form.interestMode === "yearly") {
       const deposit = Number(form.deposit);
       const yearly = Number(form.yearlyInterest);
       if (deposit > 0 && yearly > 0) {
@@ -190,7 +202,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
 
   // When in "roi" mode, auto-calculate ROI from deposit + maturity amount + period
   useEffect(() => {
-    if (form.interestPayout === "yearly" || form.interestMode !== "roi") return;
+    if (form.interestMode !== "roi") return;
     const deposit = Number(form.deposit);
     const maturity = Number(form.maturityAmount);
     const t = periodInYears(form.years, form.months, form.days);
@@ -203,6 +215,26 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
 
   const update = (key: keyof FormState, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
+  const startRenewal = () => {
+    if (!initial) return;
+    const renewedPrincipal = initial.interestPayout === "yearly" ? initial.deposit : initial.maturityAmount;
+    setRenewalMode(true);
+    setForm((current) => ({
+      ...current,
+      valueDate: initial.maturityDate,
+      maturityDate: "",
+      deposit: String(renewedPrincipal),
+      maturityAmount: initial.interestPayout === "yearly" ? String(renewedPrincipal) : "",
+      recordType: "renewed",
+    }));
+  };
+
+  const cancelRenewal = () => {
+    if (!initial) return;
+    setRenewalMode(false);
+    setForm(depositToForm(initial));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // ---- Validation ----
@@ -210,10 +242,11 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
     if (!accountNo) return toast.error("Account number is required.");
     if (!/^[A-Za-z0-9-]{4,30}$/.test(accountNo))
       return toast.error("Account number must be 4-30 alphanumeric characters.");
+    const sameRenewedAccount = renewalMode && accountNo.toLowerCase() === initial?.accountNo.toLowerCase();
     const dupe = existingAccountNos
       .filter((a) => a && a !== initial?.accountNo)
       .some((a) => a.toLowerCase() === accountNo.toLowerCase());
-    if (dupe) return toast.error("An FD with this account number already exists.");
+    if (dupe && !sameRenewedAccount) return toast.error("An FD with this account number already exists.");
     if (!form.bank) return toast.error("Please select a bank.");
     if (!form.valueDate) return toast.error("Value date is required.");
     if (!form.maturityDate) return toast.error("Maturity date is required.");
@@ -221,7 +254,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       return toast.error("Maturity date must be after value date.");
     const period = buildPeriod(form.years, form.months, form.days);
     if (!period) return toast.error("Period must be at least 1 day.");
-    if (form.interestPayout === "yearly" || form.interestMode === "yearly") {
+    if (form.interestMode === "yearly") {
       const yearly = Number(form.yearlyInterest);
       if (!form.yearlyInterest || isNaN(yearly) || yearly <= 0)
         return toast.error("Yearly interest must be greater than 0.");
@@ -239,7 +272,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       return toast.error("Maturity amount cannot be less than deposit.");
 
     const fd: FixedDeposit = {
-      id: initial?.id ?? crypto.randomUUID(),
+      id: renewalMode ? crypto.randomUUID() : initial?.id ?? crypto.randomUUID(),
       accountNo,
       valueDate: form.valueDate,
       maturityDate: form.maturityDate,
@@ -247,10 +280,13 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       deposit,
       maturityAmount,
       roi,
-      interestPayout: form.interestPayout,
-      yearlyInterest: form.interestPayout === "yearly" ? Number(form.yearlyInterest) : undefined,
+      interestPayout: form.interestMode === "yearly" ? "yearly" : "maturity",
+      yearlyInterest: form.interestMode === "yearly" ? Number(form.yearlyInterest) : undefined,
       type: form.type,
       bank: form.bank,
+      nominee: form.nominee.trim() || undefined,
+      recordType: form.recordType,
+      renewalOf: renewalMode ? initial?.id : undefined,
       notes: form.notes.trim() || undefined,
     };
     setReview(fd);
@@ -261,7 +297,8 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
     saveLock.current = true;
     setSaving(true);
     try {
-      await onSubmit(review);
+      if (renewalMode && onRenew) await onRenew(review);
+      else await onSubmit(review);
       if (mode === "add") {
         try {
           localStorage.removeItem(DRAFT_KEY);
@@ -294,20 +331,21 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
       <DialogContent className="compact-record-dialog sm:max-w-lg w-[calc(100vw-1rem)] max-h-[94vh] overflow-y-auto p-3 sm:p-6">
         <DialogHeader className="compact-record-header">
           <DialogTitle className="font-display text-lg sm:text-xl">
-            {review ? "Review Fixed Deposit" : mode === "add" ? "Add New Fixed Deposit" : "Edit Fixed Deposit"}
+            {review ? "Review Fixed Deposit" : renewalMode ? "Renew Fixed Deposit" : mode === "add" ? "Add New Fixed Deposit" : "Edit Fixed Deposit"}
           </DialogTitle>
-          <DialogDescription>{review ? "Confirm the details below to save this deposit." : "Enter the deposit details, then review them before saving."}</DialogDescription>
+          <DialogDescription>{review ? "Confirm the details below to save this deposit." : renewalMode ? "This creates a new renewed record and keeps the current FD in your list." : "Enter the deposit details, then review them before saving."}</DialogDescription>
         </DialogHeader>
         {review ? <div className="compact-record-form space-y-4">
           <div className="compact-record-scroll space-y-3">
           <p className="text-sm text-muted-foreground">Check these details before saving.</p>
           <RecordSummary rows={[
             ["Account number", review.accountNo], ["Bank", review.bank], ["Type", review.type],
+             ["Record", review.recordType === "renewed" ? "Renewed" : "New"], ["Nominee", review.nominee ?? "—"],
             ["Value date", review.valueDate], ["Maturity date", review.maturityDate], ["Period", review.period],
              ["Deposit", formatCurrency(review.deposit)], [review.interestPayout === "yearly" ? "Principal at maturity" : "Maturity amount", formatCurrency(review.maturityAmount)],
-             ["ROI", `${review.roi}%`], ["Interest payout", review.interestPayout === "yearly" ? "Paid yearly" : "At maturity"],
-             ["Interest entry", form.interestPayout === "yearly" || form.interestMode === "yearly" ? "Yearly interest" : "Deposit and maturity amount"],
-             ...(form.interestPayout === "yearly" || form.interestMode === "yearly" ? [["Yearly interest", formatCurrency(Number(form.yearlyInterest))] as const] : []),
+              ["ROI", `${review.roi}%`], ["Interest payout", review.interestPayout === "yearly" ? "Paid yearly" : "At maturity"],
+              ["Interest entry", form.interestMode === "yearly" ? "Yearly interest" : "Deposit and maturity amount"],
+              ...(form.interestMode === "yearly" ? [["Yearly interest", formatCurrency(Number(form.yearlyInterest))] as const] : []),
             ["Notes", review.notes ?? ""],
           ]} />
           </div>
@@ -317,10 +355,24 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
           </div>
         </div> : <form onSubmit={handleSubmit} className="compact-record-form space-y-3 sm:space-y-4 pt-1 sm:pt-2">
           <div className="compact-record-scroll space-y-3 sm:space-y-4">
+          {mode === "edit" && initial && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <p className="text-xs text-muted-foreground">{renewalMode ? `Renewal based on FD ending ${initial.accountNo.slice(-4)}` : "Keep this FD's history when renewing."}</p>
+              {renewalMode ? (
+                <Button type="button" variant="outline" size="sm" onClick={cancelRenewal}>Cancel renewal</Button>
+              ) : (
+                <Button type="button" variant="outline" size="sm" onClick={startRenewal}>Renew FD</Button>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
             <div className="col-span-2">
               <Label htmlFor="accountNo">Account Number</Label>
               <Input id="accountNo" value={form.accountNo} onChange={(e) => update("accountNo", e.target.value)} placeholder="e.g. 1046101000000055" required />
+            </div>
+            <div className="col-span-2">
+              <Label htmlFor="nominee">Nominee (optional)</Label>
+              <Input id="nominee" value={form.nominee} onChange={(e) => update("nominee", e.target.value)} placeholder="Nominee name" />
             </div>
              <div>
               <Label htmlFor="bank">Bank / Institution</Label>
@@ -340,6 +392,16 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 <SelectContent>
                   <SelectItem value="Regular">Regular</SelectItem>
                   <SelectItem value="Personal">Personal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>FD status</Label>
+              <Select value={form.recordType} onValueChange={(v) => update("recordType", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="renewed">Renewed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -390,20 +452,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 Maturity date auto-calculates from value date + period.
               </p>
             </div>
-            <div className="col-span-2">
-               <Label>Interest payout</Label>
-               <Select value={form.interestPayout} onValueChange={(v) => update("interestPayout", v)}>
-                 <SelectTrigger><SelectValue /></SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="maturity">Interest paid at maturity</SelectItem>
-                   <SelectItem value="yearly">Interest paid every year</SelectItem>
-                 </SelectContent>
-               </Select>
-               {form.interestPayout === "yearly" && (
-                 <p className="text-xs text-muted-foreground mt-1">Only the deposit returns on the maturity date; interest is received yearly.</p>
-               )}
-             </div>
-             {form.interestPayout === "yearly" ? (
+              {form.interestMode === "yearly" ? (
                <>
                  <div>
                    <Label htmlFor="deposit">Deposit Amount (₹)</Label>
@@ -422,13 +471,14 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
              ) : <>
              <div className="col-span-2">
               <Label>Interest Calculation</Label>
-              <Select value={form.interestMode} onValueChange={(v) => update("interestMode", v)}>
+               <Select value={form.interestMode} onValueChange={(v) => setForm((current) => ({ ...current, interestMode: v as "roi" | "yearly", interestPayout: v === "yearly" ? "yearly" : "maturity" }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="roi">Enter ROI (%)</SelectItem>
-                  <SelectItem value="yearly">Enter Yearly Interest (₹/year)</SelectItem>
+                  <SelectItem value="yearly">Enter Yearly Interest (paid yearly)</SelectItem>
                 </SelectContent>
-              </Select>
+               </Select>
+               <p className="text-xs text-muted-foreground mt-1">Yearly interest is paid annually and excluded from maturity totals.</p>
             </div>
             <div>
               <Label htmlFor="deposit">Deposit Amount (₹)</Label>
@@ -486,8 +536,8 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
           </div>
           </div>
           <div className="compact-record-actions">
-          <Button type="submit" className="w-full">
-            Review details
+           <Button type="submit" className="w-full">
+             Review details
           </Button>
           </div>
         </form>}

@@ -30,6 +30,7 @@ const Index = () => {
           fd.bank.toLowerCase().includes(q) ||
           fd.period.toLowerCase().includes(q) ||
           fd.type.toLowerCase().includes(q) ||
+          fd.nominee?.toLowerCase().includes(q) ||
           fd.notes?.toLowerCase().includes(q)
       );
     }
@@ -102,7 +103,7 @@ const Index = () => {
               </Select>
             </div>
 
-            <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} existingAccountNos={existingAccountNos} />
+            <FDTable deposits={filtered} onDelete={handleDelete} onUpdate={handleUpdate} onRenew={handleAdd} existingAccountNos={existingAccountNos} />
           </>
         )}
           </TabsContent>
