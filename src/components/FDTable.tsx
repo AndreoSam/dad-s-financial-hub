@@ -143,10 +143,12 @@ const FDTable = ({ deposits, onDelete, onUpdate, onRenew, existingAccountNos = [
                      <Badge variant="outline" className={`px-1.5 py-0 text-[10px] ${fd.type === "Personal" ? "bg-accent/10 text-accent border-accent/20" : "bg-muted text-muted-foreground"}`}>
                       {fd.type}
                     </Badge>
+                     {fd.recordType === "renewed" && <Badge variant="outline" className="px-1.5 py-0 text-[10px]">Renewed</Badge>}
                      {isYearlyPaid(fd) && <Badge variant="outline" className="px-1.5 py-0 text-[10px] bg-primary/10 text-primary border-primary/20">Paid yearly</Badge>}
                      <Badge variant="outline" className={`${status.className} px-1.5 py-0 text-[10px]`}>{status.label}</Badge>
                   </div>
-                   <p className="font-mono text-[11px] text-muted-foreground mt-1 break-all">A/C {fd.accountNo}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground mt-1 break-all">A/C {fd.accountNo}</p>
+                    {fd.nominee && <p className="text-[10px] text-muted-foreground mt-0.5">Nominee: {fd.nominee}</p>}
                 </div>
                 <div className="flex items-center shrink-0">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(fd)}>
@@ -247,6 +249,7 @@ const FDTable = ({ deposits, onDelete, onUpdate, onRenew, existingAccountNos = [
                       {fd.type}
                     </Badge>
                      {isYearlyPaid(fd) && <span className="block text-[10px] text-primary mt-1">Paid yearly</span>}
+                      {fd.recordType === "renewed" && <span className="block text-[10px] text-muted-foreground mt-1">Renewed</span>}
                   </td>
                   <td className="px-2 py-3">
                     <Badge variant="outline" className={`${status.className} text-[10px] whitespace-nowrap`}>{status.label}</Badge>

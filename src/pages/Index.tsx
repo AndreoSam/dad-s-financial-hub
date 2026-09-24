@@ -30,6 +30,7 @@ const Index = () => {
           fd.bank.toLowerCase().includes(q) ||
           fd.period.toLowerCase().includes(q) ||
           fd.type.toLowerCase().includes(q) ||
+          fd.nominee?.toLowerCase().includes(q) ||
           fd.notes?.toLowerCase().includes(q)
       );
     }
