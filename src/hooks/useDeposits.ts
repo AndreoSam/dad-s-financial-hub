@@ -6,6 +6,7 @@ import {
   deleteDoc,
   updateDoc,
   doc,
+  getDoc,
   query,
   orderBy,
   writeBatch,
@@ -23,12 +24,32 @@ const BANK_ACCOUNTS_COLLECTION = "bankAccounts";
 const INDIAN_BANK_DOC = "indian-bank";
 const INITIAL_INDIAN_BANK_BALANCE = 26191.9;
 const MONTHLY_PF = 3764;
+const ACTIVITY_COLLECTION = "activityLogs";
 
 const monthIndex = (value: string) => { const [year, month] = value.split("-").map(Number); return year * 12 + (month - 1); };
 const currentMonth = () => { const now = new Date(); return String(now.getFullYear()) + "-" + String(now.getMonth() + 1).padStart(2, "0"); };
 
-const clean = <T extends Record<string, unknown>>(data: T) =>
+const formatActivityCurrency = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);\n\nconst clean = <T extends Record<string, unknown>>(data: T) =>
   Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
+
+export type ActivityType = "add" | "delete" | "update" | "renew";
+
+export interface ActivityLog {
+  id: string;
+  type: ActivityType;
+  title: string;
+  description: string;
+  targetId: string;
+  snapshot?: FixedDeposit;
+  before?: FixedDeposit;
+  after?: FixedDeposit;
+  createdAt: string;
+  revertedAt?: string;
+}
+
+const recordActivity = async (entry: Omit<ActivityLog, "id">) => {
+  await addDoc(collection(db, ACTIVITY_COLLECTION), clean(entry as unknown as Record<string, unknown>));
+};
 
 const protect = async (action: string) => {
   try {
@@ -66,12 +87,24 @@ export const useDeposits = () => {
     try {
       await protect("add_deposit");
       const { id, ...data } = fd as FixedDeposit;
-      const isNewSouthIndianBankFd = data.bank === "South Indian Bank" && data.recordType !== "renewed";
+      const isRenewal = data.recordType === "renewed";
+      const isNewSouthIndianBankFd = data.bank === "South Indian Bank" && !isRenewal;
+      const createdRef = doc(collection(db, COLLECTION));
+
       if (!isNewSouthIndianBankFd) {
-        await addDoc(collection(db, COLLECTION), clean(data));
-        toast.success("Fixed deposit added successfully!");
+        await setDoc(createdRef, clean(data));
+        await recordActivity({
+          type: isRenewal ? "renew" : "add",
+          title: isRenewal ? "FD renewed" : "FD added",
+          description: isRenewal ? `Renewed FD ${data.accountNo} was created.` : `Added ${data.bank} FD ${data.accountNo}.`,
+          targetId: createdRef.id,
+          snapshot: { ...data, id: createdRef.id } as FixedDeposit,
+          createdAt: new Date().toISOString(),
+        });
+        toast.success(isRenewal ? "Fixed deposit renewed successfully!" : "Fixed deposit added successfully!");
         return;
       }
+
       const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
       await runTransaction(db, async (transaction) => {
         const balanceSnap = await transaction.get(balanceRef);
@@ -91,7 +124,15 @@ export const useDeposits = () => {
         const depositAmount = Number(data.deposit);
         if (depositAmount > balance) throw new Error("INSUFFICIENT_INDIAN_BANK_BALANCE:" + balance);
         transaction.set(balanceRef, { balance: Number((balance - depositAmount).toFixed(2)), monthlyPf: MONTHLY_PF, lastPfCreditMonth: lastPfMonth, updatedAt: new Date().toISOString() }, { merge: true });
-        transaction.set(doc(collection(db, COLLECTION)), clean(data));
+        transaction.set(createdRef, clean(data));
+      });
+      await recordActivity({
+        type: "add",
+        title: "FD added",
+        description: `Added South Indian Bank FD ${data.accountNo} and deducted ${formatActivityCurrency(data.deposit)} from Indian Bank balance.`,
+        targetId: createdRef.id,
+        snapshot: { ...data, id: createdRef.id } as FixedDeposit,
+        createdAt: new Date().toISOString(),
       });
       toast.success("Fixed deposit added and Indian Bank balance updated.");
     } catch (error) {
@@ -104,8 +145,19 @@ export const useDeposits = () => {
   const handleUpdate = async (fd: FixedDeposit) => {
     try {
       await protect("update_deposit");
+      const existing = await getDoc(doc(db, COLLECTION, fd.id));
+      const before = existing.exists() ? ({ id: existing.id, ...existing.data() } as FixedDeposit) : undefined;
       const { id, ...data } = fd;
       await updateDoc(doc(db, COLLECTION, id), clean({ ...data, notes: data.notes ?? "" }));
+      await recordActivity({
+        type: "update",
+        title: "FD updated",
+        description: `Updated FD ${fd.accountNo}.`,
+        targetId: id,
+        before,
+        after: fd,
+        createdAt: new Date().toISOString(),
+      });
       toast.success("Fixed deposit updated.");
     } catch (error) {
       console.error("Update error:", error);
@@ -117,8 +169,19 @@ export const useDeposits = () => {
   const handleDelete = async (id: string) => {
     try {
       await protect("delete_deposit");
+      const fdSnap = await getDoc(doc(db, COLLECTION, id));
+      if (!fdSnap.exists()) throw new Error("FD_NOT_FOUND");
+      const fd = { id: fdSnap.id, ...fdSnap.data() } as FixedDeposit;
       await deleteDoc(doc(db, COLLECTION, id));
-      toast.success("Fixed deposit removed.");
+      await recordActivity({
+        type: "delete",
+        title: "FD deleted",
+        description: `Deleted ${fd.bank} FD ${fd.accountNo}.`,
+        targetId: id,
+        snapshot: fd,
+        createdAt: new Date().toISOString(),
+      });
+      toast.success("Fixed deposit removed. You can restore it from Notifications.");
     } catch (error) {
       console.error("Delete error:", error);
       if (!(error instanceof Error && error.message.includes("reCAPTCHA"))) toast.error("Failed to delete deposit.");
