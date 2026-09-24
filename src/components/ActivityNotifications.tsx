@@ -25,7 +25,7 @@ const iconFor = (type: ActivityLog["type"]) => {
 };
 
 const ActivityNotifications = () => {
-  const { activities, loading, revertingId, revertActivity } = useActivityLog();
+  const { activities, loading, revertingId, revertActivity } = useActivityLog(true);
   const [selected, setSelected] = useState<ActivityLog | null>(null);
 
   const requestRevert = (activity: ActivityLog) => setSelected(activity);
@@ -107,7 +107,7 @@ const ActivityNotifications = () => {
                   : selected?.type === "update"
                     ? "The FD will be restored to the details it had before the edit."
                     : "The added FD will be removed."}
-              {" "}This action itself will not be reversible from this notification.
+              {" "}This action itself will not be reversible from this notification. All changes here are isolated to Testing Mode.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
