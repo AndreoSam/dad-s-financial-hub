@@ -47,6 +47,7 @@ export interface ActivityLog {
   after?: FixedDeposit;
   createdAt: string;
   revertedAt?: string;
+  bankBalanceDelta?: number;
 }
 
 const recordActivity = async (entry: Omit<ActivityLog, "id">) => {
@@ -140,6 +141,7 @@ export const useDeposits = () => {
         description: `Added South Indian Bank FD ${data.accountNo} and deducted ${formatActivityCurrency(data.deposit)} from Indian Bank balance.`,
         targetId: createdRef.id,
         snapshot: { ...data, id: createdRef.id } as FixedDeposit,
+        bankBalanceDelta: -Number(data.deposit),
         createdAt: new Date().toISOString(),
       });
       toast.success("Fixed deposit added and Indian Bank balance updated.");
