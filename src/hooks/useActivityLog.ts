@@ -9,6 +9,7 @@ import {
   query,
   setDoc,
   updateDoc,
+  runTransaction,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { verifyRecaptcha } from "@/lib/recaptcha";
@@ -17,6 +18,8 @@ import type { ActivityLog } from "./useDeposits";
 
 const ACTIVITY_COLLECTION = "activityLogs";
 const FD_COLLECTION = "fixedDeposits";
+const BANK_ACCOUNTS_COLLECTION = "bankAccounts";
+const INDIAN_BANK_DOC = "indian-bank";
 
 export const useActivityLog = () => {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
@@ -55,8 +58,24 @@ export const useActivityLog = () => {
         await setDoc(targetRef, snapshotData);
         toast.success("Deleted FD restored.");
       } else if (activity.type === "add" || activity.type === "renew") {
-        await deleteDoc(targetRef);
-        toast.success(activity.type === "renew" ? "Renewal reverted." : "Added FD removed.");
+        if (activity.type === "add" && activity.bankBalanceDelta && activity.snapshot?.bank === "South Indian Bank" && activity.snapshot.recordType !== "renewed") {
+          const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
+          await runTransaction(db, async (transaction) => {
+            const fdSnap = await transaction.get(targetRef);
+            if (!fdSnap.exists()) throw new Error("The FD has already been removed, so this notification cannot be reverted safely.");
+            const balanceSnap = await transaction.get(balanceRef);
+            const currentBalance = Number(balanceSnap.data()?.balance ?? 0);
+            transaction.delete(targetRef);
+            transaction.set(balanceRef, {
+              balance: Number((currentBalance - activity.bankBalanceDelta).toFixed(2)),
+              updatedAt: new Date().toISOString(),
+            }, { merge: true });
+          });
+          toast.success("FD removed and the Indian Bank balance was restored.");
+        } else {
+          await deleteDoc(targetRef);
+          toast.success(activity.type === "renew" ? "Renewal reverted." : "Added FD removed.");
+        }
       } else if (activity.type === "update" && activity.before) {
         const { id: _ignoredId, ...beforeData } = activity.before;
         await setDoc(targetRef, beforeData);
