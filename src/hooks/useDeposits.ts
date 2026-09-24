@@ -17,6 +17,7 @@ import { db } from "@/lib/firebase";
 import { verifyRecaptcha } from "@/lib/recaptcha";
 import { type FixedDeposit, type InsurancePolicy, defaultDeposits } from "@/data/fixedDeposits";
 import { toast } from "sonner";
+import { TEST_COLLECTIONS } from "./useTestingData";
 
 const COLLECTION = "fixedDeposits";
 const INSURANCE_COLLECTION = "insurancePolicies";
@@ -50,10 +51,10 @@ export interface ActivityLog {
   bankBalanceDelta?: number;
 }
 
-const recordActivity = async (entry: Omit<ActivityLog, "id">) => {
+const recordActivity = async (collectionName: string, entry: Omit<ActivityLog, "id">) => {
   try {
     const payload = JSON.parse(JSON.stringify(entry));
-    await addDoc(collection(db, ACTIVITY_COLLECTION), payload);
+    await addDoc(collection(db, collectionName), payload);
   } catch (error) {
     console.error("Activity log write error:", error);
     toast.warning("The FD change was saved, but its notification could not be recorded.");
@@ -70,12 +71,15 @@ const protect = async (action: string) => {
   }
 };
 
-export const useDeposits = () => {
+export const useDeposits = (testingMode = false) => {
+  const depositsCollection = testingMode ? TEST_COLLECTIONS.deposits : COLLECTION;
+  const activityCollection = testingMode ? TEST_COLLECTIONS.activities : ACTIVITY_COLLECTION;
+  const bankAccountsCollection = testingMode ? TEST_COLLECTIONS.bankAccounts : BANK_ACCOUNTS_COLLECTION;
   const [deposits, setDeposits] = useState<FixedDeposit[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, COLLECTION), orderBy("valueDate", "desc"));
+    const q = query(collection(db, depositsCollection), orderBy("valueDate", "desc"));
     const unsub = onSnapshot(
       q,
       (snapshot) => {
@@ -98,11 +102,11 @@ export const useDeposits = () => {
       const { id, ...data } = fd as FixedDeposit;
       const isRenewal = data.recordType === "renewed";
       const isNewSouthIndianBankFd = data.bank === "South Indian Bank" && !isRenewal;
-      const createdRef = doc(collection(db, COLLECTION));
+      const createdRef = doc(collection(db, depositsCollection));
 
       if (!isNewSouthIndianBankFd) {
         await setDoc(createdRef, clean(data));
-        await recordActivity({
+        await recordActivity(activityCollection, {
           type: isRenewal ? "renew" : "add",
           title: isRenewal ? "FD renewed" : "FD added",
           description: isRenewal ? `Renewed FD ${data.accountNo} was created.` : `Added ${data.bank} FD ${data.accountNo}.`,
@@ -114,7 +118,7 @@ export const useDeposits = () => {
         return;
       }
 
-      const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
+      const balanceRef = doc(db, bankAccountsCollection, INDIAN_BANK_DOC);
       await runTransaction(db, async (transaction) => {
         const balanceSnap = await transaction.get(balanceRef);
         const nowMonth = currentMonth();
@@ -135,7 +139,7 @@ export const useDeposits = () => {
         transaction.set(balanceRef, { balance: Number((balance - depositAmount).toFixed(2)), monthlyPf: MONTHLY_PF, lastPfCreditMonth: lastPfMonth, updatedAt: new Date().toISOString() }, { merge: true });
         transaction.set(createdRef, clean(data));
       });
-      await recordActivity({
+      await recordActivity(activityCollection, {
         type: "add",
         title: "FD added",
         description: `Added South Indian Bank FD ${data.accountNo} and deducted ${formatActivityCurrency(data.deposit)} from Indian Bank balance.`,
@@ -155,11 +159,11 @@ export const useDeposits = () => {
   const handleUpdate = async (fd: FixedDeposit) => {
     try {
       await protect("update_deposit");
-      const existing = await getDoc(doc(db, COLLECTION, fd.id));
+      const existing = await getDoc(doc(db, depositsCollection, fd.id));
       const before = existing.exists() ? ({ id: existing.id, ...existing.data() } as FixedDeposit) : undefined;
       const { id, ...data } = fd;
-      await updateDoc(doc(db, COLLECTION, id), clean({ ...data, notes: data.notes ?? "" }));
-      await recordActivity({
+      await updateDoc(doc(db, depositsCollection, id), clean({ ...data, notes: data.notes ?? "" }));
+      await recordActivity(activityCollection, {
         type: "update",
         title: "FD updated",
         description: `Updated FD ${fd.accountNo}.`,
@@ -179,11 +183,11 @@ export const useDeposits = () => {
   const handleDelete = async (id: string) => {
     try {
       await protect("delete_deposit");
-      const fdSnap = await getDoc(doc(db, COLLECTION, id));
+      const fdSnap = await getDoc(doc(db, depositsCollection, id));
       if (!fdSnap.exists()) throw new Error("FD_NOT_FOUND");
       const fd = { id: fdSnap.id, ...fdSnap.data() } as FixedDeposit;
-      await deleteDoc(doc(db, COLLECTION, id));
-      await recordActivity({
+      await deleteDoc(doc(db, depositsCollection, id));
+      await recordActivity(activityCollection, {
         type: "delete",
         title: "FD deleted",
         description: `Deleted ${fd.bank} FD ${fd.accountNo}.`,
@@ -205,7 +209,7 @@ export const useDeposits = () => {
       const batch = writeBatch(db);
       for (const fd of defaultDeposits) {
         const { id, ...data } = fd;
-        batch.set(doc(db, COLLECTION, `default-${id}`), clean(data));
+        batch.set(doc(db, depositsCollection, `default-${id}`), clean(data));
       }
       await batch.commit();
       toast.success("Default deposits loaded!");
@@ -219,11 +223,12 @@ export const useDeposits = () => {
   return { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults };
 };
 
-export const useIndianBankBalance = () => {
+export const useIndianBankBalance = (testingMode = false) => {
+  const bankAccountsCollection = testingMode ? TEST_COLLECTIONS.bankAccounts : BANK_ACCOUNTS_COLLECTION;
   const [balance, setBalance] = useState(INITIAL_INDIAN_BANK_BALANCE);
   const [monthlyPf, setMonthlyPf] = useState(MONTHLY_PF);
   useEffect(() => {
-    const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
+    const balanceRef = doc(db, bankAccountsCollection, INDIAN_BANK_DOC);
     const unsubscribe = onSnapshot(balanceRef, async (snapshot) => {
       if (!snapshot.exists()) {
         try {
