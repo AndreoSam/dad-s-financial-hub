@@ -17,6 +17,7 @@ import { db } from "@/lib/firebase";
 import { verifyRecaptcha } from "@/lib/recaptcha";
 import { type FixedDeposit, type InsurancePolicy, defaultDeposits } from "@/data/fixedDeposits";
 import { toast } from "sonner";
+import { TEST_COLLECTIONS } from "./useTestingData";
 
 const COLLECTION = "fixedDeposits";
 const INSURANCE_COLLECTION = "insurancePolicies";
@@ -53,7 +54,7 @@ export interface ActivityLog {
 const recordActivity = async (entry: Omit<ActivityLog, "id">) => {
   try {
     const payload = JSON.parse(JSON.stringify(entry));
-    await addDoc(collection(db, ACTIVITY_COLLECTION), payload);
+    await addDoc(collection(db, activityCollection), payload);
   } catch (error) {
     console.error("Activity log write error:", error);
     toast.warning("The FD change was saved, but its notification could not be recorded.");
@@ -70,12 +71,15 @@ const protect = async (action: string) => {
   }
 };
 
-export const useDeposits = () => {
+export const useDeposits = (testingMode = false) => {
+  const depositsCollection = testingMode ? TEST_COLLECTIONS.deposits : COLLECTION;
+  const activityCollection = testingMode ? TEST_COLLECTIONS.activities : ACTIVITY_COLLECTION;
+  const bankAccountsCollection = testingMode ? TEST_COLLECTIONS.bankAccounts : BANK_ACCOUNTS_COLLECTION;
   const [deposits, setDeposits] = useState<FixedDeposit[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, COLLECTION), orderBy("valueDate", "desc"));
+    const q = query(collection(db, depositsCollection), orderBy("valueDate", "desc"));
     const unsub = onSnapshot(
       q,
       (snapshot) => {
@@ -114,7 +118,7 @@ export const useDeposits = () => {
         return;
       }
 
-      const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
+      const balanceRef = doc(db, bankAccountsCollection, INDIAN_BANK_DOC);
       await runTransaction(db, async (transaction) => {
         const balanceSnap = await transaction.get(balanceRef);
         const nowMonth = currentMonth();
@@ -158,7 +162,7 @@ export const useDeposits = () => {
       const existing = await getDoc(doc(db, COLLECTION, fd.id));
       const before = existing.exists() ? ({ id: existing.id, ...existing.data() } as FixedDeposit) : undefined;
       const { id, ...data } = fd;
-      await updateDoc(doc(db, COLLECTION, id), clean({ ...data, notes: data.notes ?? "" }));
+      await updateDoc(doc(db, depositsCollection, id), clean({ ...data, notes: data.notes ?? "" }));
       await recordActivity({
         type: "update",
         title: "FD updated",
@@ -205,7 +209,7 @@ export const useDeposits = () => {
       const batch = writeBatch(db);
       for (const fd of defaultDeposits) {
         const { id, ...data } = fd;
-        batch.set(doc(db, COLLECTION, `default-${id}`), clean(data));
+        batch.set(doc(db, depositsCollection, `default-${id}`), clean(data));
       }
       await batch.commit();
       toast.success("Default deposits loaded!");
@@ -219,11 +223,12 @@ export const useDeposits = () => {
   return { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults };
 };
 
-export const useIndianBankBalance = () => {
+export const useIndianBankBalance = (testingMode = false) => {
+  const bankAccountsCollection = testingMode ? TEST_COLLECTIONS.bankAccounts : BANK_ACCOUNTS_COLLECTION;
   const [balance, setBalance] = useState(INITIAL_INDIAN_BANK_BALANCE);
   const [monthlyPf, setMonthlyPf] = useState(MONTHLY_PF);
   useEffect(() => {
-    const balanceRef = doc(db, BANK_ACCOUNTS_COLLECTION, INDIAN_BANK_DOC);
+    const balanceRef = doc(db, bankAccountsCollection, INDIAN_BANK_DOC);
     const unsubscribe = onSnapshot(balanceRef, async (snapshot) => {
       if (!snapshot.exists()) {
         try {
