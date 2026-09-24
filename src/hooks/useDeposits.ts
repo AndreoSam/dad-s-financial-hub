@@ -29,7 +29,9 @@ const ACTIVITY_COLLECTION = "activityLogs";
 const monthIndex = (value: string) => { const [year, month] = value.split("-").map(Number); return year * 12 + (month - 1); };
 const currentMonth = () => { const now = new Date(); return String(now.getFullYear()) + "-" + String(now.getMonth() + 1).padStart(2, "0"); };
 
-const formatActivityCurrency = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);\n\nconst clean = <T extends Record<string, unknown>>(data: T) =>
+const formatActivityCurrency = (amount: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+
+const clean = <T extends Record<string, unknown>>(data: T) =>
   Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
 
 export type ActivityType = "add" | "delete" | "update" | "renew";
