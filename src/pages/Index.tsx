@@ -5,13 +5,18 @@ import FDDialog from "@/components/FDDialog";
 import NotificationButton from "@/components/NotificationButton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PiggyBank, Search } from "lucide-react";
+import { PiggyBank, Search, TestTube2, ArrowLeft } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import InsuranceSection from "@/components/InsuranceSection";
 import LoadDefaultsDialog from "@/components/LoadDefaultsDialog";
 import { useDeposits, useIndianBankBalance } from "@/hooks/useDeposits";
+import ActivityNotifications from "@/components/ActivityNotifications";
+import { Link } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
 
-const Index = () => {
+interface IndexProps { testingMode?: boolean; }
+
+const Index = ({ testingMode = false }: IndexProps) => {
   const { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults } = useDeposits();
   const { balance: indianBankBalance, monthlyPf } = useIndianBankBalance();
   const [search, setSearch] = useState("");
@@ -56,6 +61,11 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <NotificationButton />
+            {testingMode ? (
+              <ButtonLink to="/" icon={ArrowLeft} label="Main" />
+            ) : (
+              <ButtonLink to="/testing" icon={TestTube2} label="Testing Copy" />
+            )}
             {section === "deposits" && deposits.length === 0 && !loading && <LoadDefaultsDialog onConfirm={seedDefaults} />}
             {section === "deposits" && <FDDialog mode="add" onSubmit={handleAdd} existingAccountNos={existingAccountNos} />}
           </div>
@@ -63,7 +73,8 @@ const Index = () => {
       </header>
       <main className="container max-w-6xl mx-auto px-2.5 sm:px-4 py-3 sm:py-8 space-y-3 sm:space-y-8">
         <Tabs value={section} onValueChange={setSection}>
-          <TabsList className="w-full sm:w-auto"><TabsTrigger value="deposits" className="flex-1">Fixed deposits</TabsTrigger><TabsTrigger value="insurance" className="flex-1">Insurance</TabsTrigger></TabsList>
+          {testingMode && <div className="rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs sm:text-sm text-muted-foreground mb-3"><strong className="text-foreground">Testing Copy:</strong> This page uses the same Firestore data as the main application. Changes made here are real, so use it to test the Notifications/revert workflow before we move it into the main page.</div>}
+          <TabsList className="w-full sm:w-auto"><TabsTrigger value="deposits" className="flex-1">Fixed deposits</TabsTrigger><TabsTrigger value="insurance" className="flex-1">Insurance</TabsTrigger>{testingMode && <TabsTrigger value="notifications" className="flex-1">Notifications</TabsTrigger>}</TabsList>
           <TabsContent value="deposits" className="space-y-4 sm:space-y-8">
         {loading ? (
           <div className="text-center py-20 text-muted-foreground">Loading deposits from database...</div>
@@ -109,10 +120,17 @@ const Index = () => {
         )}
           </TabsContent>
           <TabsContent value="insurance"><InsuranceSection /></TabsContent>
+          {testingMode && <TabsContent value="notifications"><ActivityNotifications /></TabsContent>}
         </Tabs>
       </main>
     </div>
   );
 };
+
+const ButtonLink = ({ to, icon: Icon, label }: { to: string; icon: LucideIcon; label: string }) => (
+  <Link to={to} className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 h-8 sm:h-9 text-xs sm:text-sm font-medium hover:bg-muted transition-colors">
+    <Icon className="w-4 h-4" /> <span className="hidden sm:inline">{label}</span>
+  </Link>
+);
 
 export default Index;
