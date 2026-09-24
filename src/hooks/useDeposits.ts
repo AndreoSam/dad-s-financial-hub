@@ -50,7 +50,13 @@ export interface ActivityLog {
 }
 
 const recordActivity = async (entry: Omit<ActivityLog, "id">) => {
-  await addDoc(collection(db, ACTIVITY_COLLECTION), clean(entry as unknown as Record<string, unknown>));
+  try {
+    const payload = JSON.parse(JSON.stringify(entry));
+    await addDoc(collection(db, ACTIVITY_COLLECTION), payload);
+  } catch (error) {
+    console.error("Activity log write error:", error);
+    toast.warning("The FD change was saved, but its notification could not be recorded.");
+  }
 };
 
 const protect = async (action: string) => {
