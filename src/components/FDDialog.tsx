@@ -404,7 +404,7 @@ const FDDialog = ({ mode, initial, open: controlledOpen, onOpenChange, onSubmit,
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="renewed">Renewed</SelectItem>
+                  <SelectItem value="renewed" disabled={!renewalMode}>Renewed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
