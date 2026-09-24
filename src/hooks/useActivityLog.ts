@@ -51,7 +51,8 @@ export const useActivityLog = () => {
       const targetRef = doc(db, FD_COLLECTION, activity.targetId);
 
       if (activity.type === "delete" && activity.snapshot) {
-        const { id: _ignoredId, ...snapshotData } = activity.snapshot;\n        await setDoc(targetRef, snapshotData);
+        const { id: _ignoredId, ...snapshotData } = activity.snapshot;
+        await setDoc(targetRef, snapshotData);
         toast.success("Deleted FD restored.");
       } else if (activity.type === "add" || activity.type === "renew") {
         await deleteDoc(targetRef);
