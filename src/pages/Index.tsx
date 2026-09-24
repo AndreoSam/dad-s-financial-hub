@@ -11,14 +11,16 @@ import InsuranceSection from "@/components/InsuranceSection";
 import LoadDefaultsDialog from "@/components/LoadDefaultsDialog";
 import { useDeposits, useIndianBankBalance } from "@/hooks/useDeposits";
 import ActivityNotifications from "@/components/ActivityNotifications";
+import { useTestingData } from "@/hooks/useTestingData";
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 
 interface IndexProps { testingMode?: boolean; }
 
 const Index = ({ testingMode = false }: IndexProps) => {
-  const { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults } = useDeposits();
-  const { balance: indianBankBalance, monthlyPf } = useIndianBankBalance();
+  const testing = useTestingData();
+  const { deposits, loading, handleAdd, handleUpdate, handleDelete, seedDefaults } = useDeposits(testingMode);
+  const { balance: indianBankBalance, monthlyPf } = useIndianBankBalance(testingMode);
   const [search, setSearch] = useState("");
   const [bankFilter, setBankFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -73,7 +75,7 @@ const Index = ({ testingMode = false }: IndexProps) => {
       </header>
       <main className="container max-w-6xl mx-auto px-2.5 sm:px-4 py-3 sm:py-8 space-y-3 sm:space-y-8">
         <Tabs value={section} onValueChange={setSection}>
-          {testingMode && <div className="rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs sm:text-sm text-muted-foreground mb-3"><strong className="text-foreground">Testing Copy:</strong> This page uses the same Firestore data as the main application. Changes made here are real, so use it to test the Notifications/revert workflow before we move it into the main page.</div>}
+          {testingMode && <div className="rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs sm:text-sm text-muted-foreground mb-3"><strong className="text-foreground">Testing Copy:</strong> This page starts from a snapshot of the main data, then uses completely separate Testing collections. Changes made here do not modify the main application data.</div>}
           <TabsList className="w-full sm:w-auto"><TabsTrigger value="deposits" className="flex-1">Fixed deposits</TabsTrigger><TabsTrigger value="insurance" className="flex-1">Insurance</TabsTrigger>{testingMode && <TabsTrigger value="notifications" className="flex-1">Notifications</TabsTrigger>}</TabsList>
           <TabsContent value="deposits" className="space-y-4 sm:space-y-8">
         {loading ? (
@@ -119,8 +121,8 @@ const Index = ({ testingMode = false }: IndexProps) => {
           </>
         )}
           </TabsContent>
-          <TabsContent value="insurance"><InsuranceSection /></TabsContent>
-          {testingMode && <TabsContent value="notifications"><ActivityNotifications /></TabsContent>}
+          <TabsContent value="insurance"><InsuranceSection testingMode={testingMode} /></TabsContent>
+          {testingMode && <TabsContent value="notifications"><ActivityNotifications testingMode={testingMode} /></TabsContent>}
         </Tabs>
       </main>
     </div>
